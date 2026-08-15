@@ -71,7 +71,7 @@ Singleton {
                 root.osLogo = Qt.resolvedUrl(`${Quickshell.shellDir}/assets/logo.svg`);
                 root.isDefaultLogo = true;
             } else if (GlobalConfig.general.logo) {
-                root.osLogo = Quickshell.iconPath(GlobalConfig.general.logo, true) || "file:
+                root.osLogo = Quickshell.iconPath(GlobalConfig.general.logo, true) || ("file://" + GlobalConfig.general.logo);
                 root.isDefaultLogo = false;
             } else if (logo) {
                 root.osLogo = logo;
