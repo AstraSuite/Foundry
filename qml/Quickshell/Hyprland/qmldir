@@ -1,4 +1,0 @@
-module Quickshell.Hyprland
-singleton Hyprland 1.0 Hyprland.qml
-HyprlandFocus 1.0 HyprlandFocus.qml
-GlobalShortcut 1.0 GlobalShortcut.qml

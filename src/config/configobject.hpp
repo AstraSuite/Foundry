@@ -96,7 +96,6 @@ public:
     [[nodiscard]] Q_INVOKABLE bool isPropertyLoaded(const QString& name) const;
 
     [[nodiscard]] bool isGlobalOnly(const QString& name) const;
-    [[nodiscard]] Q_INVOKABLE bool isOptionGlobalOnly(const QString& name) const;
 
     [[nodiscard]] QStringList globalOnlyKeys() const;
 

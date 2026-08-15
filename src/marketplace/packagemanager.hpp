@@ -71,7 +71,6 @@ public:
     Q_INVOKABLE void getInstalledPackagesAsync();
     Q_INVOKABLE void installPackage(const QString& backend, const QString& packageId, const QString& scope = QStringLiteral("user"));
     Q_INVOKABLE void uninstallPackage(const QString& backend, const QString& packageId, const QString& scope = QStringLiteral("user"));
-    Q_INVOKABLE void updatePackage(const QString& backend, const QString& packageId, const QString& scope = QStringLiteral("user"));
     Q_INVOKABLE void launchApp(const QString& backend, const QString& packageId, const QString& execPath = QString());
     Q_INVOKABLE QString getIconPath(const QString& iconName, const QString& backend = QString());
     Q_INVOKABLE QVariantMap getPackageDetails(const QString& packageId, const QString& backend = QString());

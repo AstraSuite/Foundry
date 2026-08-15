@@ -231,10 +231,6 @@ void PackageManager::uninstallPackage(const QString& backend, const QString& pac
     watcher->setFuture(future);
 }
 
-void PackageManager::updatePackage(const QString& backend, const QString& packageId, const QString& scope) {
-    installPackage(backend, packageId, scope);
-}
-
 void PackageManager::launchApp(const QString& backend, const QString& packageId, const QString& execPath) {
     Q_UNUSED(execPath);
     IPackagePlugin* plugin = findPlugin(backend);

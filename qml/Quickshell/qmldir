@@ -1,17 +1,3 @@
 module Quickshell
-singleton Quickshell 1.0 Quickshell.qml
 Singleton 1.0 Singleton.qml
-Scope 1.0 Scope.qml
-LazyLoader 1.0 LazyLoader.qml
-Region 1.0 Region.qml
-Screen 1.0 Screen.qml
-Window 1.0 Window.qml
 IpcHandler 1.0 IpcHandler.qml
-Variants 1.0 Variants.qml
-PersistentProperties 1.0 PersistentProperties.qml
-PanelWindow 1.0 PanelWindow.qml
-SystemClock 1.0 SystemClock.qml
-ElapsedTimer 1.0 ElapsedTimer.qml
-TransformWatcher 1.0 TransformWatcher.qml
-DesktopEntry 1.0 DesktopEntry.qml
-ScriptModel 1.0 ScriptModel.qml

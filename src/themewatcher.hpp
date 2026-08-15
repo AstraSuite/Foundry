@@ -37,9 +37,6 @@ public:
 
     Q_INVOKABLE void reload();
     Q_INVOKABLE void setMode(const QString& mode);
-    Q_INVOKABLE void setScheme(const QString& name, const QString& flavour);
-    Q_INVOKABLE void setVariant(const QString& variant);
-    Q_INVOKABLE QVariantList getSchemes();
 
 signals:
     void themeChanged();

@@ -1,6 +1,0 @@
-module qs.modules.astra.pages.wallandstyle
-ColourSelect 1.0 ColourSelect.qml
-WallhavenPage 1.0 WallhavenPage.qml
-WallpaperCategory 1.0 WallpaperCategory.qml
-WallpaperEnginePage 1.0 WallpaperEnginePage.qml
-WallpaperSelect 1.0 WallpaperSelect.qml

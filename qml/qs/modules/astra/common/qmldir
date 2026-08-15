@@ -1,27 +1,10 @@
 module qs.modules.astra.common
 AnimatedLogo 1.0 AnimatedLogo.qml
-AppDetailsModal 1.0 AppDetailsModal.qml
-AudioDeviceList 1.0 AudioDeviceList.qml
-BlobPopup 1.0 BlobPopup.qml
 ConnectedRect 1.0 ConnectedRect.qml
-DialogRowButton 1.0 DialogRowButton.qml
-DialogSelectButton 1.0 DialogSelectButton.qml
-EthernetSection 1.0 EthernetSection.qml
 InfoRow 1.0 InfoRow.qml
-ItemList 1.0 ItemList.qml
-ListEditor 1.0 ListEditor.qml
-NavRow 1.0 NavRow.qml
-NetworkList 1.0 NetworkList.qml
 PageBase 1.0 PageBase.qml
 PerMonitorStatusChip 1.0 PerMonitorStatusChip.qml
-PopupRow 1.0 PopupRow.qml
-RowButton 1.0 RowButton.qml
 SectionHeader 1.0 SectionHeader.qml
-SelectRow 1.0 SelectRow.qml
-SliderRow 1.0 SliderRow.qml
 StackPage 1.0 StackPage.qml
-StepperRow 1.0 StepperRow.qml
-TextFieldRow 1.0 TextFieldRow.qml
 ToggleRow 1.0 ToggleRow.qml
-WallItem 1.0 WallItem.qml
 SplitButton 1.0 SplitButton.qml

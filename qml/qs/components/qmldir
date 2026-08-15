@@ -1,15 +1,7 @@
 module qs.components
-AnchorAnim 1.0 AnchorAnim.qml
 Anim 1.0 Anim.qml
-AnimLoader 1.0 AnimLoader.qml
 CAnim 1.0 CAnim.qml
-DinoGame 1.0 DinoGame.qml
-Logo 1.0 Logo.qml
 MaterialIcon 1.0 MaterialIcon.qml
-PolkitDialog 1.0 PolkitDialog.qml
-SafeScreencopy 1.0 SafeScreencopy.qml
-ScreenState 1.0 ScreenState.qml
 StateLayer 1.0 StateLayer.qml
-StyledClippingRect 1.0 StyledClippingRect.qml
 StyledRect 1.0 StyledRect.qml
 StyledText 1.0 StyledText.qml

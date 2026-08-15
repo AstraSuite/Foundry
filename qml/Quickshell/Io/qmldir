@@ -1,6 +1,0 @@
-module Quickshell.Io
-FileView 1.0 FileView.qml
-Process 1.0 Process.qml
-Socket 1.0 Socket.qml
-StdioCollector 1.0 StdioCollector.qml
-SplitParser 1.0 SplitParser.qml

@@ -1,7 +1,6 @@
 #include "cutils.hpp"
 
 #include <QtConcurrent/qtconcurrentrun.h>
-#include <qcryptographichash.h>
 #include <QtQuick/qquickitemgrabresult.h>
 #include <QtQuick/qquickwindow.h>
 #include <qdir.h>
@@ -104,35 +103,6 @@ void CUtils::saveItem(QQuickItem* target, const QUrl& path, const QRect& rect, Q
         });
 }
 
-bool CUtils::copyFile(const QUrl& source, const QUrl& target, bool overwrite) {
-    if (!source.isLocalFile()) {
-        qCWarning(lcCUtils) << "copyFile: source" << source << "is not a local file";
-        return false;
-    }
-    if (!target.isLocalFile()) {
-        qCWarning(lcCUtils) << "copyFile: target" << target << "is not a local file";
-        return false;
-    }
-
-    if (overwrite && QFile::exists(target.toLocalFile())) {
-        if (!QFile::remove(target.toLocalFile())) {
-            qCWarning(lcCUtils) << "copyFile: overwrite was specified but failed to remove" << target.toLocalFile();
-            return false;
-        }
-    }
-
-    return QFile::copy(source.toLocalFile(), target.toLocalFile());
-}
-
-bool CUtils::deleteFile(const QUrl& path) {
-    if (!path.isLocalFile()) {
-        qCWarning(lcCUtils) << "deleteFile: path" << path << "is not a local file";
-        return false;
-    }
-
-    return QFile::remove(path.toLocalFile());
-}
-
 QString CUtils::toLocalFile(const QUrl& url) {
     if (!url.isLocalFile()) {
         qCWarning(lcCUtils) << "toLocalFile: given url is not a local file" << url;
@@ -140,20 +110,6 @@ QString CUtils::toLocalFile(const QUrl& url) {
     }
 
     return url.toLocalFile();
-}
-
-QString CUtils::sha256(const QString& path) {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        qCWarning(lcCUtils) << "sha256: failed to open" << path;
-        return QString();
-    }
-
-    QCryptographicHash hash(QCryptographicHash::Sha256);
-    hash.addData(&file);
-    file.close();
-
-    return hash.result().toHex();
 }
 
 bool CUtils::fileExists(const QString& path) {
@@ -255,10 +211,6 @@ QList<QQuickItem*> CUtils::findChildrenMatching(QQuickItem* root, const QString&
 
 QString CUtils::version() const {
     return QStringLiteral(CAELESTIA_VERSION);
-}
-
-QString CUtils::qtVersion() const {
-    return QStringLiteral(QT_VERSION_STR);
 }
 
 }

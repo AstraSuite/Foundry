@@ -1,7 +1,0 @@
-module qs.modules.astra.pages.services
-ArpcPage 1.0 ArpcPage.qml
-GameModePage 1.0 GameModePage.qml
-GameModeTargetsPage 1.0 GameModeTargetsPage.qml
-NotificationsPage 1.0 NotificationsPage.qml
-PipPage 1.0 PipPage.qml
-QuickSharePage 1.0 QuickSharePage.qml

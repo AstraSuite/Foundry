@@ -1,7 +1,0 @@
-module qs.modules.astra.pages.network
-AddNetworkPage 1.0 AddNetworkPage.qml
-AddVpnPage 1.0 AddVpnPage.qml
-AllNetworksPage 1.0 AllNetworksPage.qml
-EthernetDetailPage 1.0 EthernetDetailPage.qml
-NetworkDetailPage 1.0 NetworkDetailPage.qml
-SavedNetworksPage 1.0 SavedNetworksPage.qml

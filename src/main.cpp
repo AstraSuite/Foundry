@@ -304,12 +304,6 @@ int main(int argc, char* argv[]) {
     qmlRegisterType<BlobMaterial>("AstraMarket.Blobs", 1, 0, "BlobMaterial");
     qmlRegisterType<BlobShape>("AstraMarket.Blobs", 1, 0, "BlobShape");
 
-    qmlRegisterType<BlobGroup>("Caelestia.Blobs", 1, 0, "BlobGroup");
-    qmlRegisterType<BlobInvertedRect>("Caelestia.Blobs", 1, 0, "BlobInvertedRect");
-    qmlRegisterType<BlobRect>("Caelestia.Blobs", 1, 0, "BlobRect");
-    qmlRegisterType<BlobMaterial>("Caelestia.Blobs", 1, 0, "BlobMaterial");
-    qmlRegisterType<BlobShape>("Caelestia.Blobs", 1, 0, "BlobShape");
-
     QQmlApplicationEngine engine;
     engine.addImageProvider(QStringLiteral("icon"), new QtIconThemeImageProvider());
     engine.addImportPath(QStringLiteral("qrc:/qml"));
