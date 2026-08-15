@@ -1,0 +1,5 @@
+build/
+.cache/
+*.qsb
+*.user
+.DS_Store

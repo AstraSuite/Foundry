@@ -1,0 +1,5 @@
+module qs.modules.astra.pages.hyprland
+HyprKeybindsPage 1.0 HyprKeybindsPage.qml
+HyprVariablesPage 1.0 HyprVariablesPage.qml
+HyprlandPage 1.0 HyprlandPage.qml
+UserConfigPage 1.0 UserConfigPage.qml

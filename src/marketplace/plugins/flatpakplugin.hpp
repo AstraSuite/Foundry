@@ -1,0 +1,34 @@
+#pragma once
+
+#include "packageplugin.hpp"
+#include <QSettings>
+
+class FlatpakPlugin : public IPackagePlugin {
+    Q_OBJECT
+public:
+    explicit FlatpakPlugin(QObject* parent = nullptr);
+
+    QString id() const override { return QStringLiteral("Flatpak"); }
+    QString name() const override { return QStringLiteral("Flatpak"); }
+    QString description() const override { return QStringLiteral("Sandboxed applications from Flathub"); }
+    QString icon() const override { return QStringLiteral("deployed_code"); }
+
+    bool isAvailable() const override;
+    bool isEnabled() const override { return m_enabled; }
+    void setEnabled(bool enabled) override;
+
+    QVariantList search(const QString& query, const QVariantMap& options = {}) override;
+    QVariantList getInstalled() override;
+    QVariantList getUpdates() override;
+    QVariantMap getDetails(const QString& packageId) override;
+
+    bool install(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) override;
+    bool uninstall(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) override;
+    bool launch(const QString& packageId) override;
+
+    QList<QVariantMap> getInstallSources(const QString& packageId) override;
+
+private:
+    bool m_enabled{true};
+    QSettings m_settings{QStringLiteral("AstraMarket"), QStringLiteral("Plugins")};
+};

@@ -1,0 +1,4 @@
+module qs.components.widgets
+CoverArt 1.0 CoverArt.qml
+ExtraIndicator 1.0 ExtraIndicator.qml
+WavyTopRect 1.0 WavyTopRect.qml

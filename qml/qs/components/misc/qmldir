@@ -1,0 +1,3 @@
+module qs.components.misc
+CustomShortcut 1.0 CustomShortcut.qml
+Ref 1.0 Ref.qml

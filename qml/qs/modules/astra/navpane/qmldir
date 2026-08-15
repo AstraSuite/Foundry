@@ -1,0 +1,3 @@
+module qs.modules.astra.navpane
+MonitorTargetSelector 1.0 MonitorTargetSelector.qml
+NavLocations 1.0 NavLocations.qml

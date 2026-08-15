@@ -1,0 +1,6 @@
+module qs.modules.astra.pages.tokens
+BarDashboardPage 1.0 BarDashboardPage.qml
+FontSizesPage 1.0 FontSizesPage.qml
+RoundingSpacingPage 1.0 RoundingSpacingPage.qml
+ShellElementsPage 1.0 ShellElementsPage.qml
+WindowLockPage 1.0 WindowLockPage.qml

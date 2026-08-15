@@ -1,0 +1,8 @@
+module qs.modules.astra.pages
+ExplorePage 1.0 ExplorePage.qml
+InstalledPage 1.0 InstalledPage.qml
+AppImagePage 1.0 AppImagePage.qml
+UpdatesPage 1.0 UpdatesPage.qml
+AboutPage 1.0 AboutPage.qml
+MarketSettingsPage 1.0 MarketSettingsPage.qml
+AppDetailPage 1.0 AppDetailPage.qml

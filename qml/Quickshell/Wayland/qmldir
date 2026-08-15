@@ -1,0 +1,4 @@
+module Quickshell.Wayland
+singleton Wayland 1.0 Wayland.qml
+WlrLayershell 1.0 WlrLayershell.qml
+PanelWindow 1.0 PanelWindow.qml
