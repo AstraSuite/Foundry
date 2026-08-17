@@ -7,4 +7,3 @@ PerMonitorStatusChip 1.0 PerMonitorStatusChip.qml
 SectionHeader 1.0 SectionHeader.qml
 StackPage 1.0 StackPage.qml
 ToggleRow 1.0 ToggleRow.qml
-SplitButton 1.0 SplitButton.qml

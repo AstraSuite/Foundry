@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import M3Shapes
@@ -42,15 +44,17 @@ PageBase {
     ]
 
     Column {
-        width: root.width
+        width: root ? root.width : 0
         spacing: Tokens.spacing.extraSmall / 2
 
         RowLayout {
-            width: parent.width
+            width: root ? root.width : 0
             spacing: Tokens.spacing.extraSmall
 
             StyledText {
-                text: root.updatesList.length > 0 ? qsTr("%1 Updates Available").arg(root.updatesList.length) : qsTr("System is up to date")
+                text: root.updatesList.length > 0
+                    ? qsTr("%1 Updates Available").arg(root.updatesList.length)
+                    : qsTr("System is up to date")
                 font: Tokens.font.body.medium
                 color: Colours.palette.m3onSurfaceVariant
                 Layout.alignment: Qt.AlignVCenter
@@ -66,11 +70,13 @@ PageBase {
 
             Item { Layout.fillWidth: true }
 
-            IconButton {
+            IconTextButton {
                 visible: root.updatesList.length > 0
                 icon: "system_update_alt"
-                type: IconButton.Filled
+                text: qsTr("Update All")
+                type: ButtonBase.Filled
                 enabled: !PackageManager.isBusy
+                Layout.alignment: Qt.AlignVCenter
                 onClicked: {
                     PackageManager.updateAllPackages();
                 }
@@ -80,7 +86,7 @@ PageBase {
         Item { width: 1; height: Tokens.padding.small }
 
         Item {
-            width: parent.width
+            width: root ? root.width : 0
             implicitHeight: Math.max(350, root.height - 180)
             visible: root.isLoading || (PackageManager.isBusy && root.updatesList.length === 0)
 
@@ -105,12 +111,13 @@ PageBase {
 
         Repeater {
             id: updatesRepeater
-            model: root.updatesList
+            model: root.isLoading ? [] : root.updatesList
 
             ConnectedRect {
+                id: cardRect
                 required property var modelData
                 required property int index
-                width: parent ? parent.width : root.width
+                width: root ? root.width : 0
                 first: index === 0
                 last: index === updatesRepeater.count - 1
                 implicitHeight: cardLayout.implicitHeight + Tokens.padding.medium * 2
@@ -120,7 +127,7 @@ PageBase {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        root.nState.selectedApp = modelData;
+                        root.nState.selectedApp = cardRect.modelData;
                         root.nState.openSubPage(1);
                     }
                 }
@@ -132,8 +139,8 @@ PageBase {
                     spacing: Tokens.padding.medium
 
                     Item {
-                        implicitWidth: 40
-                        implicitHeight: 40
+                        width: 44
+                        height: 44
                         Layout.alignment: Qt.AlignVCenter
 
                         Item {
@@ -161,7 +168,7 @@ PageBase {
                             mipmap: true
                             antialiasing: true
                             visible: appIconImg.status === Image.Ready && appIconImg.source.toString() !== ""
-                            source: PackageManager.getIconPath(modelData.icon || modelData.id || "", modelData.backend || "")
+                            source: PackageManager.getIconPath(cardRect.modelData.icon || cardRect.modelData.id || "", cardRect.modelData.backend || "")
 
                             layer.enabled: true
                             layer.smooth: true
@@ -174,7 +181,7 @@ PageBase {
                         MaterialIcon {
                             anchors.centerIn: parent
                             visible: appIconImg.status !== Image.Ready || appIconImg.source.toString() === ""
-                            text: modelData.backend === "Flatpak" ? "deployed_code" : (modelData.backend === "AppImage" ? "extension" : "update")
+                            text: cardRect.modelData.backend === "Flatpak" ? "deployed_code" : (cardRect.modelData.backend === "AppImage" ? "extension" : "package_2")
                             fontStyle: Tokens.font.icon.medium
                             color: Colours.palette.m3onPrimaryContainer
                         }
@@ -182,13 +189,15 @@ PageBase {
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignVCenter
+                        Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
                         spacing: Tokens.padding.extraSmall
 
                         RowLayout {
+                            Layout.alignment: Qt.AlignLeft
                             spacing: Tokens.padding.small
+
                             StyledText {
-                                text: modelData.name || modelData.id
+                                text: cardRect.modelData.name || cardRect.modelData.id
                                 font: Tokens.font.title.medium
                                 color: Colours.palette.m3onSurface
                             }
@@ -202,7 +211,7 @@ PageBase {
                                 StyledText {
                                     id: badgeText
                                     anchors.centerIn: parent
-                                    text: modelData.backend
+                                    text: cardRect.modelData.backend
                                     font: Tokens.font.label.small
                                     color: Colours.palette.m3onSecondaryContainer
                                 }
@@ -213,6 +222,8 @@ PageBase {
                             text: qsTr("Update available")
                             font: Tokens.font.body.small
                             color: Colours.palette.m3onSurfaceVariant
+                            Layout.alignment: Qt.AlignLeft
+                            Layout.fillWidth: true
                         }
                     }
 
@@ -220,7 +231,7 @@ PageBase {
                         text: "chevron_right"
                         fontStyle: Tokens.font.icon.medium
                         color: Colours.palette.m3onSurfaceVariant
-                        Layout.alignment: Qt.AlignVCenter
+                        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                     }
                 }
             }

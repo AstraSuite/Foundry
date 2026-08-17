@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.19)
 
 project(AstraMarket VERSION 1.0.0 LANGUAGES CXX)
 
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT OR CMAKE_INSTALL_PREFIX STREQUAL "/usr/local")
+    set(CMAKE_INSTALL_PREFIX "/usr" CACHE PATH "Default install prefix" FORCE)
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -72,3 +76,20 @@ qt_add_resources(astra "qml_resources"
     PREFIX "/"
     FILES ${QML_FILES}
 )
+
+# Installation
+include(GNUInstallDirs)
+
+install(TARGETS astra
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES assets/astra.desktop
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+)
+
+install(FILES assets/icons/AstraMarket.svg
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
+    RENAME AstraMarket.svg
+)
+

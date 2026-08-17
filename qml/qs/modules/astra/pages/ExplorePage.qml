@@ -21,7 +21,7 @@ PageBase {
     property var packagesList: []
 
     property int visibleCount: 15
-    property bool isFiltering: false
+    property bool isSearching: false
 
     readonly property bool hasActiveQuery: root.searchQuery.trim().length > 0 || root.activeCategory !== ""
 
@@ -41,30 +41,35 @@ PageBase {
 
     Item {
         Timer {
-            id: filterTimer
-            interval: 150
+            id: searchDebounceTimer
+            interval: 220
             repeat: false
-            onTriggered: root.isFiltering = false
+            onTriggered: {
+                root.performSearch();
+            }
         }
     }
 
-    function triggerFilterAnimation(): void {
+    function performSearch(): void {
         root.visibleCount = 15;
-        root.isFiltering = true;
-        filterTimer.restart();
+        if (!root.hasActiveQuery) {
+            root.packagesList = [];
+            root.isSearching = false;
+            return;
+        }
+        root.isSearching = true;
+        root.packagesList = []; // Clear immediately to prevent stale list flashing
+        var query = root.searchQuery.trim();
+        if (root.activeCategory !== "") {
+            query = root.activeCategory;
+        }
+        var filterParam = (root.activeFilter === "All" || root.activeCategory !== "") ? "" : root.activeFilter;
+        PackageManager.searchPackagesAsync(query, filterParam);
     }
 
     function refreshSearch(): void {
-        triggerFilterAnimation();
-        if (!hasActiveQuery) {
-            root.packagesList = [];
-            return;
-        }
-        var query = searchQuery.trim();
-        if (activeCategory !== "") {
-            query = activeCategory;
-        }
-        PackageManager.searchPackagesAsync(query);
+        searchDebounceTimer.stop();
+        performSearch();
     }
 
     Component.onCompleted: {
@@ -78,7 +83,7 @@ PageBase {
             target: root.flickable
             function onContentYChanged(): void {
                 if (root.flickable && root.flickable.contentY + root.flickable.height >= root.flickable.contentHeight - 150) {
-                    if (!root.isFiltering && root.visibleCount < root.filteredPackages.length) {
+                    if (!root.isSearching && root.visibleCount < root.filteredPackages.length) {
                         root.visibleCount = Math.min(root.visibleCount + 10, root.filteredPackages.length);
                     }
                 }
@@ -87,18 +92,19 @@ PageBase {
     }
 
     Column {
-        width: root.width
+        width: root ? root.width : 0
         spacing: Tokens.spacing.extraSmall / 2
 
         Connections {
             target: PackageManager
             function onSearchCompleted(results): void {
                 root.packagesList = results ? results : [];
+                root.isSearching = false;
             }
         }
 
         RowLayout {
-            width: parent.width
+            width: root ? root.width : 0
             spacing: Tokens.padding.medium
 
             SearchBar {
@@ -106,7 +112,16 @@ PageBase {
                 placeholderText: qsTr("Search Flatpak, Pacman, AUR...")
                 onTextChanged: {
                     root.searchQuery = text;
-                    root.refreshSearch();
+                    if (root.activeCategory !== "" && text.trim().length > 0) {
+                        root.activeCategory = "";
+                    }
+                    if (text.trim().length === 0 && root.activeCategory === "") {
+                        searchDebounceTimer.stop();
+                        root.packagesList = [];
+                        root.isSearching = false;
+                    } else {
+                        searchDebounceTimer.restart();
+                    }
                 }
             }
 
@@ -119,7 +134,7 @@ PageBase {
         Item { width: 1; height: Tokens.padding.extraSmall }
 
         RowLayout {
-            width: parent.width
+            width: root ? root.width : 0
             spacing: 4
             z: 500
 
@@ -246,7 +261,7 @@ PageBase {
                     anchors.topMargin: Tokens.padding.small
                     anchors.right: fabButton.right
                     spacing: 8
-                    visible: Boolean(fabContainer && fabContainer.isOpen) || fabMenuOpacity.running
+                    visible: Boolean(fabContainer && fabContainer.isOpen) || (fabMenuOverlay.opacity > 0.01)
                     opacity: Boolean(fabContainer && fabContainer.isOpen) ? 1 : 0
                     z: 999
 
@@ -362,9 +377,9 @@ PageBase {
         Item { width: 1; height: Tokens.padding.small }
 
         Item {
-            width: parent.width
+            width: root ? root.width : 0
             implicitHeight: Math.max(350, root.height - 180)
-            visible: !root.hasActiveQuery && !root.isFiltering
+            visible: !root.hasActiveQuery && !root.isSearching
 
             ColumnLayout {
                 anchors.centerIn: parent
@@ -394,9 +409,9 @@ PageBase {
         }
 
         Item {
-            width: parent.width
+            width: root ? root.width : 0
             implicitHeight: Math.max(350, root.height - 180)
-            visible: root.hasActiveQuery && !root.isFiltering && !PackageManager.isBusy && root.filteredPackages.length === 0
+            visible: root.hasActiveQuery && !root.isSearching && !PackageManager.isBusy && root.filteredPackages.length === 0
 
             ColumnLayout {
                 anchors.centerIn: parent
@@ -426,9 +441,9 @@ PageBase {
         }
 
         Item {
-            width: parent.width
+            width: root ? root.width : 0
             implicitHeight: Math.max(350, root.height - 180)
-            visible: root.hasActiveQuery && (root.isFiltering || (PackageManager.isBusy && root.packagesList.length === 0))
+            visible: root.hasActiveQuery && (root.isSearching || (PackageManager.isBusy && root.packagesList.length === 0))
 
             ColumnLayout {
                 anchors.centerIn: parent
@@ -441,7 +456,7 @@ PageBase {
                 }
 
                 StyledText {
-                    text: root.isFiltering ? qsTr("Filtering packages...") : qsTr("Searching packages catalog...")
+                    text: root.activeCategory !== "" ? qsTr("Loading %1 apps...").arg(root.activeCategory) : qsTr("Searching packages catalog...")
                     font: Tokens.font.title.medium
                     color: Colours.palette.m3onSurfaceVariant
                     Layout.alignment: Qt.AlignHCenter
@@ -451,7 +466,7 @@ PageBase {
 
         Repeater {
             id: pkgRepeater
-            model: (!root.hasActiveQuery || root.isFiltering) ? [] : root.filteredPackages.slice(0, root.visibleCount)
+            model: (!root.hasActiveQuery || root.isSearching) ? [] : root.filteredPackages.slice(0, root.visibleCount)
 
             ConnectedRect {
                 id: cardItem
@@ -603,8 +618,8 @@ PageBase {
         }
 
         ColumnLayout {
-            width: parent.width
-            visible: root.hasActiveQuery && !root.isFiltering && root.visibleCount < root.filteredPackages.length
+            width: root ? root.width : 0
+            visible: root.hasActiveQuery && !root.isSearching && root.visibleCount < root.filteredPackages.length
             spacing: Tokens.padding.small
 
             Item { implicitHeight: Tokens.padding.small }

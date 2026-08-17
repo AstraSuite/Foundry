@@ -1,9 +1,11 @@
 import QtQuick
 import QtQuick.Layouts
+import M3Shapes
 import AstraMarket.Config
 import qs.components
 import qs.components.controls
 import qs.components.containers
+import qs.components.effects
 import qs.services
 import qs.modules.astra.common
 import AstraMarket.Market 1.0
@@ -128,11 +130,53 @@ PageBase {
                     anchors.margins: Tokens.padding.medium
                     spacing: Tokens.padding.medium
 
-                    MaterialIcon {
-                        text: "extension"
-                        fontStyle: Tokens.font.icon.large
-                        color: Colours.palette.m3primary
+                    Item {
+                        width: 44
+                        height: 44
                         Layout.alignment: Qt.AlignVCenter
+
+                        Item {
+                            id: cookieShapeWrapper
+                            anchors.fill: parent
+                            layer.enabled: true
+                            layer.smooth: true
+                            layer.samples: 4
+
+                            MaterialShape {
+                                anchors.fill: parent
+                                shape: MaterialShape.Cookie9Sided
+                                color: Colours.palette.m3primaryContainer
+                                antialiasing: true
+                                smooth: true
+                            }
+                        }
+
+                        Image {
+                            id: appIconImg
+                            anchors.fill: parent
+                            asynchronous: true
+                            fillMode: Image.PreserveAspectCrop
+                            smooth: true
+                            mipmap: true
+                            antialiasing: true
+                            visible: appIconImg.status === Image.Ready && appIconImg.source.toString() !== ""
+                            source: PackageManager.getIconPath(modelData.icon || modelData.name || "", "AppImage")
+
+                            layer.enabled: true
+                            layer.smooth: true
+                            layer.samples: 4
+                            layer.effect: Mask {
+                                maskSource: cookieShapeWrapper
+                            }
+                        }
+
+                        MaterialIcon {
+                            anchors.centerIn: parent
+                            visible: appIconImg.status !== Image.Ready || appIconImg.source.toString() === ""
+                            text: "extension"
+                            fontStyle: Tokens.font.icon.medium
+                            color: Colours.palette.m3onPrimaryContainer
+                        }
                     }
 
                     ColumnLayout {

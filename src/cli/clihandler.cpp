@@ -2,6 +2,8 @@
 #include <iostream>
 #include <iomanip>
 #include <QCoreApplication>
+#include <QFile>
+#include "marketplace/appimageinstaller.hpp"
 
 #define ANSI_RESET   "\033[0m"
 #define ANSI_BOLD    "\033[1m"
@@ -84,6 +86,22 @@ int CliHandler::run(int argc, char* argv[], PackageManager& pm) {
     }
     if (cmd == QStringLiteral("sources") || cmd == QStringLiteral("plugins")) {
         return handleSources(args, pm);
+    }
+
+    if (cmd.endsWith(QLatin1String(".appimage"), Qt::CaseInsensitive) ||
+        cmd.startsWith(QLatin1String("file://")) ||
+        QFile::exists(cmd)) {
+        AppImageInstaller installer;
+        std::cout << ANSI_BOLD "Installing AppImage: " ANSI_CYAN << cmd.toStdString() << ANSI_RESET "...\n";
+        bool ok = installer.installAppImage(cmd);
+        if (ok) {
+            std::cout << ANSI_GREEN ANSI_BOLD "✓ Successfully installed AppImage!" ANSI_RESET "\n";
+            std::cout << ANSI_DIM "  Desktop entry registered in ~/.local/share/applications" ANSI_RESET "\n";
+            return 0;
+        } else {
+            std::cerr << ANSI_RED ANSI_BOLD "✗ Failed to install AppImage: " << installer.statusMessage().toStdString() << ANSI_RESET "\n";
+            return 1;
+        }
     }
 
     std::cerr << ANSI_RED "Unknown command: " << cmd.toStdString() << ANSI_RESET "\n";
@@ -197,6 +215,23 @@ int CliHandler::handleInstall(const QStringList& args, PackageManager& pm) {
         std::cerr << ANSI_RED "Error: Package ID required." ANSI_RESET "\n";
         std::cout << "Usage: astra install <package-id> [--source <source>] [--scope user|system]\n";
         return 1;
+    }
+
+    if (packageId.endsWith(QLatin1String(".AppImage"), Qt::CaseInsensitive) ||
+        packageId.endsWith(QLatin1String(".appimage"), Qt::CaseInsensitive) ||
+        packageId.startsWith(QLatin1String("file://")) ||
+        (QFile::exists(packageId) && source == QStringLiteral("AppImage"))) {
+        AppImageInstaller installer;
+        std::cout << ANSI_BOLD "Installing AppImage: " ANSI_CYAN << packageId.toStdString() << ANSI_RESET "...\n";
+        bool ok = installer.installAppImage(packageId);
+        if (ok) {
+            std::cout << ANSI_GREEN ANSI_BOLD "✓ Successfully installed AppImage: " << packageId.toStdString() << ANSI_RESET "\n";
+            std::cout << ANSI_DIM "  Desktop entry registered in ~/.local/share/applications" ANSI_RESET "\n";
+            return 0;
+        } else {
+            std::cerr << ANSI_RED ANSI_BOLD "✗ Failed to install AppImage: " << installer.statusMessage().toStdString() << ANSI_RESET "\n";
+            return 1;
+        }
     }
 
     if (source.isEmpty()) {

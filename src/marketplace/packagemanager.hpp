@@ -32,6 +32,8 @@ class PackageManager : public QObject {
     Q_PROPERTY(bool enableAppImage READ enableAppImage WRITE setEnableAppImage NOTIFY enableAppImageChanged)
     Q_PROPERTY(QString aurHelper READ aurHelper WRITE setAurHelper NOTIFY aurHelperChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
+    Q_PROPERTY(QStringList logLines READ logLines NOTIFY logLinesChanged)
+    Q_PROPERTY(int currentProgress READ currentProgress NOTIFY currentProgressChanged)
     Q_PROPERTY(QVariantList registeredPlugins READ getRegisteredPluginsInfo NOTIFY pluginsChanged)
 
 public:
@@ -47,6 +49,8 @@ public:
     bool enableAppImage() const;
     QString aurHelper() const;
     QString statusMessage() const { return m_statusMessage; }
+    QStringList logLines() const { return m_logLines; }
+    int currentProgress() const { return m_currentProgress; }
 
     bool isFlatpakAvailable() const;
     bool isPacmanAvailable() const;
@@ -66,6 +70,7 @@ public:
     Q_INVOKABLE QVariantList getRegisteredPluginsInfo() const;
     Q_INVOKABLE QList<QVariantMap> getInstallSources(const QString& backend, const QString& packageId);
     Q_INVOKABLE QVariantList getInstalledPackages();
+    Q_INVOKABLE bool isPackageInstalled(const QString& backend, const QString& packageId);
     Q_INVOKABLE QVariantList searchPackages(const QString& query, const QString& sourceFilter = QString());
     Q_INVOKABLE void searchPackagesAsync(const QString& query, const QString& sourceFilter = QString());
     Q_INVOKABLE void getInstalledPackagesAsync();
@@ -78,6 +83,8 @@ public:
     Q_INVOKABLE QVariantList checkForUpdates();
     Q_INVOKABLE void checkForUpdatesAsync();
     Q_INVOKABLE void updateAllPackages();
+    Q_INVOKABLE void appendLog(const QString& line);
+    Q_INVOKABLE void clearLogs();
 
 signals:
     void isBusyChanged();
@@ -87,6 +94,8 @@ signals:
     void enableAppImageChanged();
     void aurHelperChanged();
     void statusMessageChanged();
+    void logLinesChanged();
+    void currentProgressChanged();
     void pluginsChanged();
     void operationProgress(const QString& packageId, int percent, const QString& status);
     void operationFinished(bool success, const QString& message);
@@ -102,10 +111,17 @@ private:
 
     bool m_isBusy{false};
     QString m_statusMessage;
+    QStringList m_logLines;
+    int m_currentProgress{0};
 
     FlatpakPlugin* m_flatpakPlugin{nullptr};
     PacmanPlugin* m_pacmanPlugin{nullptr};
     AurPlugin* m_aurPlugin{nullptr};
     AppImagePlugin* m_appimagePlugin{nullptr};
     QList<IPackagePlugin*> m_plugins;
+
+    quint64 m_searchSequence{0};
+    quint64 m_installedSequence{0};
+    quint64 m_updatesSequence{0};
 };
+

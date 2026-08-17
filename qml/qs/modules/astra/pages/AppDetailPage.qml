@@ -17,7 +17,7 @@ PageBase {
     isSubPage: true
 
     readonly property var appData: nState ? nState.selectedApp : null
-    readonly property bool isInstalled: root.appData ? (root.appData.isInstalled === true || root.appData.installed === true) : false
+    property bool isInstalled: false
     property var infoMap: null
     readonly property var screenshotsList: (root.infoMap && root.infoMap.screenshots) ? root.infoMap.screenshots : []
     readonly property var dependsList: (root.infoMap && root.infoMap.depends) ? root.infoMap.depends : []
@@ -30,9 +30,23 @@ PageBase {
     property bool isLoadingDetails: true
     property string selectedScope: (root.appData && root.appData.scope) ? root.appData.scope : "user"
 
+    function formatDescription(rawText): string {
+        if (!rawText) return qsTr("An essential desktop application for your Linux system.");
+        var text = String(rawText).trim();
+        if (text.length === 0) return qsTr("An essential desktop application for your Linux system.");
+
+        if (text.indexOf("<p>") !== -1 || text.indexOf("<ul>") !== -1 || text.indexOf("<ol>") !== -1 || text.indexOf("<br") !== -1 || text.indexOf("<div>") !== -1) {
+            return text;
+        }
+
+        return text.replace(/\n\n/g, "<br><br>").replace(/\n/g, "<br>");
+    }
+
     function loadDetails(): void {
         if (root.appData && root.appData.id) {
             root.isLoadingDetails = true;
+            root.isInstalled = PackageManager.isPackageInstalled(root.appData.backend || "", root.appData.id) ||
+                               Boolean(root.appData.isInstalled || root.appData.installed);
             PackageManager.fetchPackageDetailsAsync(root.appData.id, root.appData.backend || "");
         } else {
             root.isLoadingDetails = false;
@@ -49,7 +63,7 @@ PageBase {
 
     Column {
         id: pageContent
-        width: root.width
+        width: root ? root.width : 0
         spacing: Tokens.padding.medium
 
         Connections {
@@ -57,11 +71,21 @@ PageBase {
             function onPackageDetailsReady(details): void {
                 root.infoMap = details;
                 root.isLoadingDetails = false;
+                if (root.appData && root.appData.id) {
+                    root.isInstalled = PackageManager.isPackageInstalled(root.appData.backend || "", root.appData.id) ||
+                                       Boolean(details.isInstalled || details.installed || root.appData.isInstalled || root.appData.installed);
+                }
+            }
+            function onOperationFinished(success, message): void {
+                if (success && root.appData && root.appData.id) {
+                    root.isInstalled = PackageManager.isPackageInstalled(root.appData.backend || "", root.appData.id);
+                    root.loadDetails();
+                }
             }
         }
 
         Item {
-            width: parent.width
+            width: root ? root.width : 0
             implicitHeight: Math.max(400, root.height - 100)
             visible: root.isLoadingDetails
 
@@ -85,7 +109,7 @@ PageBase {
         }
 
         ColumnLayout {
-            width: parent.width
+            width: root ? root.width : 0
             spacing: Tokens.padding.medium
             visible: !root.isLoadingDetails
 
@@ -202,59 +226,101 @@ PageBase {
 
             Item { Layout.fillWidth: true }
 
-            RowLayout {
-                spacing: Tokens.padding.small
-                Layout.alignment: Qt.AlignVCenter
+            ColumnLayout {
+                spacing: Tokens.padding.extraSmall
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
 
-                CircularIndicator {
-                    visible: PackageManager.isBusy
-                    running: PackageManager.isBusy
-                    implicitSize: 32
-                    fgColour: Colours.palette.m3primary
-                }
-
-                IconButton {
-                    visible: root.isInstalled && !PackageManager.isBusy
-                    type: ButtonBase.Text
-                    icon: "delete"
-                    inactiveOnColour: Colours.palette.m3error
-                    activeOnColour: Colours.palette.m3error
-                    onClicked: {
-                        if (root.appData) {
-                            PackageManager.uninstallPackage(root.appData.backend || "", root.appData.id || "");
-                        }
-                    }
-                }
-
-                IconTextButton {
-                    visible: root.isInstalled && !PackageManager.isBusy
-                    icon: "open_in_new"
-                    text: qsTr("Open")
-                    onClicked: {
-                        if (root.appData) {
-                            PackageManager.launchApp(root.appData.backend || "", root.appData.id || "");
-                        }
-                    }
-                }
-
+                // Flatpak Scope SplitButton (Top)
                 SplitButton {
-                    id: installSplitBtn
-                    visible: !root.isInstalled && !PackageManager.isBusy
-                    mainText: qsTr("Install")
-                    mainIcon: "download"
-                    isSplit: root.appData && root.appData.backend === "Flatpak"
-                    currentScope: root.selectedScope
-                    currentSourceLabel: root.selectedScope === "system" ? qsTr("Flathub (System)") : qsTr("Flathub (User)")
-                    sourcesList: [
-                        { id: "user", label: qsTr("Flathub (User)"), desc: qsTr("Install in user directory (~/.local)") },
-                        { id: "system", label: qsTr("Flathub (System)"), desc: qsTr("Install system-wide (/var/lib)") }
+                    id: scopeSplitBtn
+                    visible: !root.isInstalled && !PackageManager.isBusy && root.appData && root.appData.backend === "Flatpak"
+                    Layout.alignment: Qt.AlignRight
+                    type: SplitButton.Tonal
+                    fallbackIcon: "person"
+                    fallbackText: root.selectedScope === "system" ? qsTr("Flathub (System)") : qsTr("Flathub (User)")
+                    menuItems: [
+                        MenuItem {
+                            text: qsTr("Flathub (User)")
+                            icon: "person"
+                            activeText: qsTr("Flathub (User)")
+                            activeIcon: "person"
+                            onClicked: {
+                                root.selectedScope = "user";
+                            }
+                        },
+                        MenuItem {
+                            text: qsTr("Flathub (System)")
+                            icon: "computer"
+                            activeText: qsTr("Flathub (System)")
+                            activeIcon: "computer"
+                            onClicked: {
+                                root.selectedScope = "system";
+                            }
+                        }
                     ]
-                    onSourceSelected: function(scopeId, scopeLabel) {
-                        root.selectedScope = scopeId;
-                    }
-                    onMainClicked: {
+                }
+
+                // Install Button (Directly Below SplitButton)
+                IconTextButton {
+                    id: installBtn
+                    visible: !root.isInstalled && !PackageManager.isBusy
+                    Layout.alignment: Qt.AlignRight
+                    icon: "download"
+                    text: qsTr("Install")
+                    onClicked: {
                         if (root.appData) {
                             PackageManager.installPackage(root.appData.backend || "", root.appData.id || "", root.selectedScope);
+                        }
+                    }
+                }
+
+                // While installing / package operation in progress:
+                RowLayout {
+                    Layout.alignment: Qt.AlignRight
+                    spacing: Tokens.padding.small
+                    visible: PackageManager.isBusy
+
+                    CircularIndicator {
+                        running: true
+                        implicitSize: 28
+                        fgColour: Colours.palette.m3primary
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    IconTextButton {
+                        icon: "terminal"
+                        text: qsTr("View Logs")
+                        type: ButtonBase.Tonal
+                        Layout.alignment: Qt.AlignVCenter
+                        onClicked: root.nState.openSubPage(2)
+                    }
+                }
+
+                // When installed:
+                RowLayout {
+                    Layout.alignment: Qt.AlignRight
+                    spacing: Tokens.padding.small
+                    visible: root.isInstalled && !PackageManager.isBusy
+
+                    IconButton {
+                        type: ButtonBase.Text
+                        icon: "delete"
+                        inactiveOnColour: Colours.palette.m3error
+                        activeOnColour: Colours.palette.m3error
+                        onClicked: {
+                            if (root.appData) {
+                                PackageManager.uninstallPackage(root.appData.backend || "", root.appData.id || "");
+                            }
+                        }
+                    }
+
+                    IconTextButton {
+                        icon: "open_in_new"
+                        text: qsTr("Open")
+                        onClicked: {
+                            if (root.appData) {
+                                PackageManager.launchApp(root.appData.backend || "", root.appData.id || "");
+                            }
                         }
                     }
                 }
@@ -493,10 +559,20 @@ PageBase {
                 StyledText {
                     id: descText
                     width: parent.width
-                    text: (root.infoMap && (root.infoMap.description || root.infoMap.summary)) ? (root.infoMap.description || root.infoMap.summary) : ((root.appData && (root.appData.summary || root.appData.description)) ? (root.appData.summary || root.appData.description) : qsTr("An essential desktop application for your Linux system."))
+                    textFormat: Text.RichText
+                    text: root.formatDescription(
+                        (root.infoMap && (root.infoMap.description || root.infoMap.summary))
+                            ? (root.infoMap.description || root.infoMap.summary)
+                            : ((root.appData && (root.appData.summary || root.appData.description))
+                                ? (root.appData.summary || root.appData.description)
+                                : "")
+                    )
                     font: Tokens.font.body.medium
                     color: Colours.palette.m3onSurfaceVariant
                     wrapMode: Text.WordWrap
+                    onLinkActivated: function(link) {
+                        Qt.openUrlExternally(link);
+                    }
                 }
             }
 

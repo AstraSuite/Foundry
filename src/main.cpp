@@ -210,7 +210,17 @@ int main(int argc, char* argv[]) {
         QString arg = QString::fromUtf8(argv[i]);
         if (arg == QStringLiteral("--gui") || arg == QStringLiteral("-g") || arg == QStringLiteral("gui")) {
             launchGui = true;
-            break;
+            continue;
+        }
+        if (arg.endsWith(QLatin1String(".AppImage"), Qt::CaseInsensitive) ||
+            arg.endsWith(QLatin1String(".appimage"), Qt::CaseInsensitive) ||
+            (arg.startsWith(QLatin1String("file://")) && arg.contains(QLatin1String("appimage"), Qt::CaseInsensitive))) {
+            AppImageInstaller installer;
+            bool ok = installer.installAppImage(arg);
+            if (ok) {
+                std::cout << "Successfully installed AppImage: " << arg.toStdString() << "\n";
+            }
+            return ok ? 0 : 1;
         }
     }
 
@@ -306,12 +316,28 @@ int main(int argc, char* argv[]) {
 
     QQmlApplicationEngine engine;
     engine.addImageProvider(QStringLiteral("icon"), new QtIconThemeImageProvider());
-    engine.addImportPath(QStringLiteral("qrc:/qml"));
-    engine.addImportPath(QGuiApplication::applicationDirPath() + QStringLiteral("/qml"));
-    engine.addImportPath(QStringLiteral("."));
-    engine.addImportPath(QStringLiteral("qml"));
 
-    const QUrl url(QStringLiteral("qrc:/qml/Main.qml"));
+    // Prefer local filesystem QML if running in development tree, fallback to embedded qrc
+    QString localQmlDir;
+    if (QFile::exists(QDir::currentPath() + QStringLiteral("/qml/Main.qml"))) {
+        localQmlDir = QDir::currentPath() + QStringLiteral("/qml");
+    } else if (QFile::exists(QDir::currentPath() + QStringLiteral("/../qml/Main.qml"))) {
+        localQmlDir = QFileInfo(QDir::currentPath() + QStringLiteral("/../qml")).canonicalFilePath();
+    } else if (QFile::exists(QGuiApplication::applicationDirPath() + QStringLiteral("/../qml/Main.qml"))) {
+        localQmlDir = QFileInfo(QGuiApplication::applicationDirPath() + QStringLiteral("/../qml")).canonicalFilePath();
+    }
+
+    if (!localQmlDir.isEmpty()) {
+        engine.addImportPath(localQmlDir);
+        engine.addImportPath(QFileInfo(localQmlDir + QStringLiteral("/..")).canonicalFilePath());
+    }
+    engine.addImportPath(QStringLiteral("qrc:/qml"));
+    engine.addImportPath(QStringLiteral("qrc:/"));
+
+    const QUrl url = !localQmlDir.isEmpty()
+        ? QUrl::fromLocalFile(localQmlDir + QStringLiteral("/Main.qml"))
+        : QUrl(QStringLiteral("qrc:/qml/Main.qml"));
+
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app, [url](QObject* obj, const QUrl& objUrl) {
         if (!obj && url == objUrl)
             QCoreApplication::exit(-1);

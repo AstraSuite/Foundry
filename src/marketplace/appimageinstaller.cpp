@@ -100,6 +100,15 @@ bool AppImageInstaller::installAppImage(const QString& fileUrlOrPath) {
 
     QProcess::startDetached(QStringLiteral("update-desktop-database"), {QDir::homePath() + QStringLiteral("/.local/share/applications")});
 
+    if (QFile::exists(QStringLiteral("/usr/bin/notify-send")) || QFile::exists(QStringLiteral("/bin/notify-send"))) {
+        QString notifIcon = iconPath.isEmpty() ? QStringLiteral("system-software-install") : iconPath;
+        QProcess::startDetached(QStringLiteral("notify-send"), {
+            QStringLiteral("Astra Market"),
+            QStringLiteral("Successfully installed ") + displayName + QStringLiteral("\nAvailable in your applications menu."),
+            QStringLiteral("-i"), notifIcon
+        });
+    }
+
     setStatus(false, QStringLiteral("Successfully installed ") + displayName);
     emit appImageInstalled(displayName, desktopPath);
     return true;
@@ -193,6 +202,19 @@ QVariantList AppImageInstaller::listInstalledAppImages() {
                     appMap[QStringLiteral("icon")] = line.mid(5).trimmed();
                 }
             }
+
+            QString icon = appMap.value(QStringLiteral("icon")).toString();
+            if (!icon.isEmpty() && !QFile::exists(icon)) {
+                QString iconsDir = QDir::homePath() + QStringLiteral("/.local/share/icons/hicolor/512x512/apps/");
+                if (QFile::exists(iconsDir + icon)) {
+                    appMap[QStringLiteral("icon")] = iconsDir + icon;
+                } else if (QFile::exists(iconsDir + icon + QStringLiteral(".png"))) {
+                    appMap[QStringLiteral("icon")] = iconsDir + icon + QStringLiteral(".png");
+                } else if (QFile::exists(iconsDir + icon + QStringLiteral(".svg"))) {
+                    appMap[QStringLiteral("icon")] = iconsDir + icon + QStringLiteral(".svg");
+                }
+            }
+
             list.append(appMap);
         }
     }

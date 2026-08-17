@@ -17,7 +17,19 @@ cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
+## Installation
+
+Install AstraMarket system-wide (requires root privileges):
+
+```bash
+sudo cmake --install build
+```
+
+This installs the `astra` binary to `/usr/bin`, the desktop launcher to `/usr/share/applications/astra.desktop`, and the application icon to `/usr/share/icons/hicolor/scalable/apps/AstraMarket.svg`.
+
+
 ## Running the GUI
+
 
 Launch the graphical marketplace interface:
 

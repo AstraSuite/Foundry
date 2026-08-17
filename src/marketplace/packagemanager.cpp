@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QStandardPaths>
+#include <QTime>
 
 PackageManager::PackageManager(QObject* parent) : QObject(parent) {
     initPlugins();
@@ -115,14 +116,19 @@ QList<QVariantMap> PackageManager::getInstallSources(const QString& backend, con
     return {};
 }
 
+#include <algorithm>
+
 void PackageManager::searchPackagesAsync(const QString& query, const QString& sourceFilter) {
+    quint64 seq = ++m_searchSequence;
     setBusy(true);
     auto* watcher = new QFutureWatcher<QVariantList>(this);
-    connect(watcher, &QFutureWatcher<QVariantList>::finished, this, [this, watcher] {
+    connect(watcher, &QFutureWatcher<QVariantList>::finished, this, [this, watcher, seq] {
         QVariantList results = watcher->result();
         watcher->deleteLater();
-        setBusy(false);
-        emit searchCompleted(results);
+        if (seq == m_searchSequence) {
+            setBusy(false);
+            emit searchCompleted(results);
+        }
     });
 
     QFuture<QVariantList> future = QtConcurrent::run([this, query, sourceFilter] {
@@ -133,35 +139,117 @@ void PackageManager::searchPackagesAsync(const QString& query, const QString& so
 
 QVariantList PackageManager::searchPackages(const QString& query, const QString& sourceFilter) {
     QVariantList results;
-    if (query.trimmed().isEmpty()) return results;
+    QString q = query.trimmed();
+    if (q.isEmpty()) return results;
+    QString qLower = q.toLower();
 
     QSet<QString> seenKeys;
+    struct ScoredItem {
+        QVariantMap item;
+        int score{0};
+    };
+    QList<ScoredItem> scoredItems;
+
     for (IPackagePlugin* plugin : m_plugins) {
         if (!plugin->isAvailable() || !plugin->isEnabled()) continue;
-        if (!sourceFilter.isEmpty() && plugin->id().compare(sourceFilter, Qt::CaseInsensitive) != 0 && plugin->name().compare(sourceFilter, Qt::CaseInsensitive) != 0) {
+        if (!sourceFilter.isEmpty() &&
+            plugin->id().compare(sourceFilter, Qt::CaseInsensitive) != 0 &&
+            plugin->name().compare(sourceFilter, Qt::CaseInsensitive) != 0) {
             continue;
         }
 
-        QVariantList pResults = plugin->search(query);
+        QVariantList pResults = plugin->search(q);
         for (const QVariant& v : pResults) {
             QVariantMap item = v.toMap();
-            QString key = item.value(QStringLiteral("backend")).toString() + QStringLiteral(":") + item.value(QStringLiteral("id")).toString();
+            QString backend = item.value(QStringLiteral("backend")).toString();
+            QString id = item.value(QStringLiteral("id")).toString();
+            QString key = backend + QStringLiteral(":") + id;
             if (seenKeys.contains(key)) continue;
             seenKeys.insert(key);
-            results.append(item);
+
+            QString name = item.value(QStringLiteral("name")).toString();
+            QString summary = item.value(QStringLiteral("summary")).toString();
+            QString nameLower = name.toLower();
+            QString idLower = id.toLower();
+            QString summaryLower = summary.toLower();
+
+            int score = 0;
+
+            // 1. Exact matches
+            if (nameLower == qLower) {
+                score += 10000;
+            } else if (idLower == qLower) {
+                score += 9000;
+            } else if (idLower.endsWith(QStringLiteral(".") + qLower) || idLower.startsWith(qLower + QStringLiteral("."))) {
+                score += 7000;
+            }
+
+            // 2. Starts with / prefix
+            if (nameLower.startsWith(qLower)) {
+                score += 5000;
+            } else if (idLower.startsWith(qLower) || idLower.contains(QStringLiteral(".") + qLower)) {
+                score += 3500;
+            }
+
+            // 3. Word boundary or contains
+            if (nameLower.contains(QStringLiteral(" ") + qLower) || nameLower.contains(QStringLiteral("-") + qLower)) {
+                score += 2500;
+            } else if (nameLower.contains(qLower)) {
+                score += 1500;
+            }
+
+            if (idLower.contains(qLower)) {
+                score += 800;
+            }
+
+            if (summaryLower.contains(qLower)) {
+                score += 200;
+                if (summaryLower.startsWith(qLower)) {
+                    score += 300;
+                }
+            }
+
+            // Verified / official boost
+            if (item.value(QStringLiteral("verified")).toBool()) {
+                score += 500;
+            }
+
+            // Backend priority bonus: Flatpak official apps generally user-friendly
+            if (backend == QStringLiteral("Flatpak") && (nameLower.contains(qLower) || idLower.contains(qLower))) {
+                score += 150;
+            }
+
+            // Shorter names matching query are usually the primary package
+            if (nameLower.contains(qLower)) {
+                score -= qMin(name.length() * 5, 200);
+            }
+
+            scoredItems.append({item, score});
         }
+    }
+
+    // Sort by score descending
+    std::stable_sort(scoredItems.begin(), scoredItems.end(), [](const ScoredItem& a, const ScoredItem& b) {
+        return a.score > b.score;
+    });
+
+    for (const auto& s : scoredItems) {
+        results.append(s.item);
     }
     return results;
 }
 
 void PackageManager::getInstalledPackagesAsync() {
+    quint64 seq = ++m_installedSequence;
     setBusy(true);
     auto* watcher = new QFutureWatcher<QVariantList>(this);
-    connect(watcher, &QFutureWatcher<QVariantList>::finished, this, [this, watcher] {
+    connect(watcher, &QFutureWatcher<QVariantList>::finished, this, [this, watcher, seq] {
         QVariantList results = watcher->result();
         watcher->deleteLater();
-        setBusy(false);
-        emit installedCompleted(results);
+        if (seq == m_installedSequence) {
+            setBusy(false);
+            emit installedCompleted(results);
+        }
     });
 
     QFuture<QVariantList> future = QtConcurrent::run([this] {
@@ -179,16 +267,76 @@ QVariantList PackageManager::getInstalledPackages() {
     return results;
 }
 
+bool PackageManager::isPackageInstalled(const QString& backend, const QString& packageId) {
+    if (packageId.isEmpty()) return false;
+    IPackagePlugin* plugin = findPlugin(backend);
+    if (plugin) {
+        QVariantList installed = plugin->getInstalled();
+        for (const QVariant& v : installed) {
+            QVariantMap map = v.toMap();
+            if (map.value(QStringLiteral("id")).toString().compare(packageId, Qt::CaseInsensitive) == 0 ||
+                map.value(QStringLiteral("name")).toString().compare(packageId, Qt::CaseInsensitive) == 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void PackageManager::appendLog(const QString& line) {
+    QString trimmed = line.trimmed();
+    if (trimmed.isEmpty()) return;
+
+    // Check if this is an in-progress update of the same step (e.g. "Installing 1/5...", "Downloading...")
+    // to avoid appending 50 identical lines per download
+    if (!m_logLines.isEmpty()) {
+        const QString& last = m_logLines.last();
+        QString lastContent = last.section(QLatin1Char(']'), 1).trimmed();
+        QString currentContent = trimmed.section(QLatin1Char(']'), 1).trimmed();
+        if (lastContent.isEmpty()) lastContent = last;
+        if (currentContent.isEmpty()) currentContent = trimmed;
+
+        QString lastPrefix = lastContent.section(QLatin1Char(' '), 0, 1);
+        QString curPrefix = currentContent.section(QLatin1Char(' '), 0, 1);
+        if (!lastPrefix.isEmpty() && lastPrefix == curPrefix &&
+            (lastPrefix.contains(QLatin1String("Installing")) ||
+             lastPrefix.contains(QLatin1String("Downloading")) ||
+             lastPrefix.contains(QLatin1String("Fetching")))) {
+            m_logLines.last() = trimmed;
+            emit logLinesChanged();
+            return;
+        }
+    }
+
+    m_logLines.append(trimmed);
+    if (m_logLines.size() > 3000) {
+        m_logLines.removeFirst();
+    }
+    emit logLinesChanged();
+}
+
+void PackageManager::clearLogs() {
+    m_logLines.clear();
+    emit logLinesChanged();
+}
+
 void PackageManager::installPackage(const QString& backend, const QString& packageId, const QString& scope) {
     setBusy(true);
-    setStatusMessage(QStringLiteral("Installing ") + packageId + QStringLiteral("..."));
+    m_currentProgress = 0;
+    emit currentProgressChanged();
+    QString statusText = QStringLiteral("Installing ") + packageId + QStringLiteral(" (") + backend + QStringLiteral(")...");
+    setStatusMessage(statusText);
+    appendLog(QStringLiteral("[%1] Starting installation: %2 [%3, scope: %4]").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), packageId, backend, scope));
 
     auto* watcher = new QFutureWatcher<bool>(this);
-    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, packageId] {
+    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, packageId, backend] {
         bool success = watcher->result();
         watcher->deleteLater();
         setBusy(false);
+        m_currentProgress = success ? 100 : 0;
+        emit currentProgressChanged();
         setStatusMessage(QString());
+        appendLog(QStringLiteral("[%1] %2: %3 (%4)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : QStringLiteral("FAILED"), packageId, backend));
         emit operationFinished(success, success ? QStringLiteral("Successfully installed ") + packageId : QStringLiteral("Failed to install ") + packageId);
     });
 
@@ -199,6 +347,11 @@ void PackageManager::installPackage(const QString& backend, const QString& packa
         IPackagePlugin* plugin = findPlugin(backend);
         if (!plugin) return false;
         return plugin->install(packageId, opts, [this, packageId](int pct, const QString& status) {
+            m_currentProgress = pct;
+            emit currentProgressChanged();
+            if (!status.isEmpty()) {
+                appendLog(QStringLiteral("[%1] [%2%] %3").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), QString::number(pct), status));
+            }
             emit operationProgress(packageId, pct, status);
         });
     });
@@ -207,14 +360,21 @@ void PackageManager::installPackage(const QString& backend, const QString& packa
 
 void PackageManager::uninstallPackage(const QString& backend, const QString& packageId, const QString& scope) {
     setBusy(true);
-    setStatusMessage(QStringLiteral("Uninstalling ") + packageId + QStringLiteral("..."));
+    m_currentProgress = 0;
+    emit currentProgressChanged();
+    QString statusText = QStringLiteral("Uninstalling ") + packageId + QStringLiteral(" (") + backend + QStringLiteral(")...");
+    setStatusMessage(statusText);
+    appendLog(QStringLiteral("[%1] Starting uninstallation: %2 [%3]").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), packageId, backend));
 
     auto* watcher = new QFutureWatcher<bool>(this);
-    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, packageId] {
+    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, packageId, backend] {
         bool success = watcher->result();
         watcher->deleteLater();
         setBusy(false);
+        m_currentProgress = success ? 100 : 0;
+        emit currentProgressChanged();
         setStatusMessage(QString());
+        appendLog(QStringLiteral("[%1] %2: %3 (%4)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : QStringLiteral("FAILED"), packageId, backend));
         emit operationFinished(success, success ? QStringLiteral("Successfully uninstalled ") + packageId : QStringLiteral("Failed to uninstall ") + packageId);
     });
 
@@ -225,6 +385,11 @@ void PackageManager::uninstallPackage(const QString& backend, const QString& pac
         IPackagePlugin* plugin = findPlugin(backend);
         if (!plugin) return false;
         return plugin->uninstall(packageId, opts, [this, packageId](int pct, const QString& status) {
+            m_currentProgress = pct;
+            emit currentProgressChanged();
+            if (!status.isEmpty()) {
+                appendLog(QStringLiteral("[%1] [%2%] %3").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), QString::number(pct), status));
+            }
             emit operationProgress(packageId, pct, status);
         });
     });
@@ -242,6 +407,16 @@ void PackageManager::launchApp(const QString& backend, const QString& packageId,
 QString PackageManager::getIconPath(const QString& iconName, const QString& backend) {
     Q_UNUSED(backend);
     if (iconName.isEmpty()) return QString();
+    if (iconName.startsWith(QLatin1String("http://")) ||
+        iconName.startsWith(QLatin1String("https://")) ||
+        iconName.startsWith(QLatin1String("image://")) ||
+        iconName.startsWith(QLatin1String("file://")) ||
+        iconName.startsWith(QLatin1String("qrc:/"))) {
+        return iconName;
+    }
+    if (iconName.startsWith(QLatin1Char('/'))) {
+        return QStringLiteral("file://") + iconName;
+    }
     return QStringLiteral("image://icon/") + iconName;
 }
 
@@ -277,13 +452,16 @@ QVariantList PackageManager::checkForUpdates() {
 }
 
 void PackageManager::checkForUpdatesAsync() {
+    quint64 seq = ++m_updatesSequence;
     setBusy(true);
     auto* watcher = new QFutureWatcher<QVariantList>(this);
-    connect(watcher, &QFutureWatcher<QVariantList>::finished, this, [this, watcher] {
+    connect(watcher, &QFutureWatcher<QVariantList>::finished, this, [this, watcher, seq] {
         QVariantList results = watcher->result();
         watcher->deleteLater();
-        setBusy(false);
-        emit updatesCompleted(results);
+        if (seq == m_updatesSequence) {
+            setBusy(false);
+            emit updatesCompleted(results);
+        }
     });
 
     QFuture<QVariantList> future = QtConcurrent::run([this] {

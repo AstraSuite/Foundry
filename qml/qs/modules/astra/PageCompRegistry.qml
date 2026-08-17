@@ -21,6 +21,9 @@ QtObject {
                 Component {
                     AppDetailPage {}
                 }
+                Component {
+                    LogsPage {}
+                }
             }
         },
 
@@ -28,6 +31,9 @@ QtObject {
             StackPage {
                 Component {
                     AppImagePage {}
+                }
+                Component {
+                    LogsPage {}
                 }
             }
         },
@@ -40,6 +46,9 @@ QtObject {
                 Component {
                     AppDetailPage {}
                 }
+                Component {
+                    LogsPage {}
+                }
             }
         },
 
@@ -51,6 +60,9 @@ QtObject {
                 Component {
                     AppDetailPage {}
                 }
+                Component {
+                    LogsPage {}
+                }
             }
         },
 
@@ -59,6 +71,9 @@ QtObject {
                 Component {
                     AboutPage {}
                 }
+                Component {
+                    LogsPage {}
+                }
             }
         },
 
@@ -66,6 +81,9 @@ QtObject {
             StackPage {
                 Component {
                     MarketSettingsPage {}
+                }
+                Component {
+                    LogsPage {}
                 }
             }
         }

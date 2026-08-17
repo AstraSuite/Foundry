@@ -50,36 +50,142 @@ QVariantList FlatpakPlugin::search(const QString& query, const QVariantMap& opti
     QVariantList results;
     if (!isAvailable() || !m_enabled) return results;
 
-    QString q = query.trimmed().toLower();
+    QString q = query.trimmed();
     if (q.isEmpty()) return results;
 
-    QProcess proc;
-    proc.start(QStringLiteral("flatpak"), {QStringLiteral("search"), q, QStringLiteral("--columns=app,name,description")});
-    if (proc.waitForFinished(5000)) {
-        QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-        QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-        QSet<QString> seen;
-        for (const QString& line : lines) {
-            QStringList parts = line.split(QLatin1Char('\t'), Qt::KeepEmptyParts);
-            if (parts.size() >= 2) {
-                QString appId = parts.value(0).trimmed();
-                QString appName = parts.value(1).trimmed();
-                if (seen.contains(appId)) continue;
-                seen.insert(appId);
+    QSet<QString> seen;
 
-                QVariantMap item;
-                item[QStringLiteral("id")] = appId;
-                item[QStringLiteral("name")] = appName;
-                item[QStringLiteral("summary")] = parts.size() > 2 ? parts.value(2).trimmed() : QStringLiteral("");
-                item[QStringLiteral("backend")] = QStringLiteral("Flatpak");
-                item[QStringLiteral("scope")] = QStringLiteral("user");
-                item[QStringLiteral("icon")] = appId;
-                results.append(item);
+    // Check if searching for a category collection
+    static const QMap<QString, QStringList> categoryMap = {
+        { QStringLiteral("Photo & Video"), { QStringLiteral("Graphics"), QStringLiteral("AudioVideo") } },
+        { QStringLiteral("Music & Audio"), { QStringLiteral("AudioVideo") } },
+        { QStringLiteral("Productivity"), { QStringLiteral("Office") } },
+        { QStringLiteral("Communication & News"), { QStringLiteral("Network") } },
+        { QStringLiteral("Education & Science"), { QStringLiteral("Science") } },
+        { QStringLiteral("Games"), { QStringLiteral("Game") } },
+        { QStringLiteral("Utilities"), { QStringLiteral("Utility") } },
+        { QStringLiteral("Development"), { QStringLiteral("Development") } },
+        { QStringLiteral("AudioVideo"), { QStringLiteral("AudioVideo") } },
+        { QStringLiteral("Graphics"), { QStringLiteral("Graphics") } },
+        { QStringLiteral("Network"), { QStringLiteral("Network") } },
+        { QStringLiteral("Office"), { QStringLiteral("Office") } },
+        { QStringLiteral("Game"), { QStringLiteral("Game") } },
+        { QStringLiteral("Utility"), { QStringLiteral("Utility") } },
+        { QStringLiteral("Science"), { QStringLiteral("Science") } }
+    };
+
+    bool isCategoryQuery = categoryMap.contains(q);
+    QStringList targetCategories = isCategoryQuery ? categoryMap.value(q) : QStringList();
+
+    if (isCategoryQuery) {
+        for (const QString& cat : targetCategories) {
+            QNetworkAccessManager nam;
+            QUrl url(QStringLiteral("https://flathub.org/api/v2/collection/category/") + cat);
+            QNetworkRequest req(url);
+            req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+            req.setTransferTimeout(2500);
+
+            QEventLoop loop;
+            QNetworkReply* reply = nam.get(req);
+            QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+            loop.exec();
+
+            if (reply->error() == QNetworkReply::NoError) {
+                QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+                if (doc.isObject() && doc.object().contains(QStringLiteral("hits"))) {
+                    QJsonArray hits = doc.object()[QStringLiteral("hits")].toArray();
+                    for (const QJsonValue& val : hits) {
+                        QJsonObject obj = val.toObject();
+                        QString appId = obj.contains(QStringLiteral("app_id")) ? obj[QStringLiteral("app_id")].toString() : obj[QStringLiteral("id")].toString();
+                        if (appId.isEmpty() || seen.contains(appId)) continue;
+                        seen.insert(appId);
+
+                        QVariantMap item;
+                        item[QStringLiteral("id")] = appId;
+                        item[QStringLiteral("name")] = obj.contains(QStringLiteral("name")) ? obj[QStringLiteral("name")].toString() : appId;
+                        item[QStringLiteral("summary")] = obj.contains(QStringLiteral("summary")) ? obj[QStringLiteral("summary")].toString() : QString();
+                        item[QStringLiteral("backend")] = QStringLiteral("Flatpak");
+                        item[QStringLiteral("scope")] = QStringLiteral("user");
+                        item[QStringLiteral("icon")] = obj.contains(QStringLiteral("icon")) && !obj[QStringLiteral("icon")].toString().isEmpty() ? obj[QStringLiteral("icon")].toString() : appId;
+                        item[QStringLiteral("verified")] = obj.value(QStringLiteral("verification_verified")).toBool();
+                        results.append(item);
+                    }
+                }
             }
+            reply->deleteLater();
         }
     } else {
-        proc.kill();
-        proc.waitForFinished(500);
+        // Query Flathub Search API (POST /api/v2/search)
+        QNetworkAccessManager nam;
+        QUrl url(QStringLiteral("https://flathub.org/api/v2/search"));
+        QNetworkRequest req(url);
+        req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+        req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+        req.setTransferTimeout(2500);
+
+        QJsonObject jsonBody;
+        jsonBody[QStringLiteral("query")] = q;
+        QByteArray payload = QJsonDocument(jsonBody).toJson(QJsonDocument::Compact);
+
+        QEventLoop loop;
+        QNetworkReply* reply = nam.post(req, payload);
+        QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+        loop.exec();
+
+        if (reply->error() == QNetworkReply::NoError) {
+            QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+            if (doc.isObject() && doc.object().contains(QStringLiteral("hits"))) {
+                QJsonArray hits = doc.object()[QStringLiteral("hits")].toArray();
+                for (const QJsonValue& val : hits) {
+                    QJsonObject obj = val.toObject();
+                    QString appId = obj.contains(QStringLiteral("app_id")) ? obj[QStringLiteral("app_id")].toString() : obj[QStringLiteral("id")].toString();
+                    if (appId.isEmpty() || seen.contains(appId)) continue;
+                    seen.insert(appId);
+
+                    QVariantMap item;
+                    item[QStringLiteral("id")] = appId;
+                    item[QStringLiteral("name")] = obj.contains(QStringLiteral("name")) ? obj[QStringLiteral("name")].toString() : appId;
+                    item[QStringLiteral("summary")] = obj.contains(QStringLiteral("summary")) ? obj[QStringLiteral("summary")].toString() : QString();
+                    item[QStringLiteral("backend")] = QStringLiteral("Flatpak");
+                    item[QStringLiteral("scope")] = QStringLiteral("user");
+                    item[QStringLiteral("icon")] = obj.contains(QStringLiteral("icon")) && !obj[QStringLiteral("icon")].toString().isEmpty() ? obj[QStringLiteral("icon")].toString() : appId;
+                    item[QStringLiteral("verified")] = obj.value(QStringLiteral("verification_verified")).toBool();
+                    results.append(item);
+                }
+            }
+        }
+        reply->deleteLater();
+    }
+
+    // Local CLI flatpak search as fallback / supplemental
+    if (results.size() < 10) {
+        QProcess proc;
+        proc.start(QStringLiteral("flatpak"), {QStringLiteral("search"), q.toLower(), QStringLiteral("--columns=app,name,description")});
+        if (proc.waitForFinished(3000)) {
+            QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
+            QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+            for (const QString& line : lines) {
+                QStringList parts = line.split(QLatin1Char('\t'), Qt::KeepEmptyParts);
+                if (parts.size() >= 2) {
+                    QString appId = parts.value(0).trimmed();
+                    QString appName = parts.value(1).trimmed();
+                    if (appId.isEmpty() || seen.contains(appId)) continue;
+                    seen.insert(appId);
+
+                    QVariantMap item;
+                    item[QStringLiteral("id")] = appId;
+                    item[QStringLiteral("name")] = appName;
+                    item[QStringLiteral("summary")] = parts.size() > 2 ? parts.value(2).trimmed() : QStringLiteral("");
+                    item[QStringLiteral("backend")] = QStringLiteral("Flatpak");
+                    item[QStringLiteral("scope")] = QStringLiteral("user");
+                    item[QStringLiteral("icon")] = appId;
+                    results.append(item);
+                }
+            }
+        } else {
+            proc.kill();
+            proc.waitForFinished(300);
+        }
     }
     return results;
 }
@@ -225,9 +331,28 @@ bool FlatpakPlugin::install(const QString& packageId, const QVariantMap& options
          << packageId;
 
     QProcess proc;
-    QObject::connect(&proc, &QProcess::readyReadStandardOutput, [&proc, &progressCb, packageId]() {
-        QString line = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-        if (progressCb) progressCb(50, line);
+    QObject::connect(&proc, &QProcess::readyReadStandardOutput, [&proc, &progressCb]() {
+        QByteArray data = proc.readAllStandardOutput();
+        QString output = QString::fromUtf8(data);
+        QStringList chunks = output.split(QRegularExpression(QStringLiteral("[\r\n]+")), Qt::SkipEmptyParts);
+        for (QString chunk : chunks) {
+            chunk = chunk.trimmed();
+            if (chunk.isEmpty()) continue;
+
+            int pct = 50;
+            QRegularExpression pctRe(QStringLiteral(R"((\d{1,3})%)"));
+            auto match = pctRe.match(chunk);
+            if (match.hasMatch()) {
+                pct = match.captured(1).toInt();
+            }
+
+            chunk.remove(QRegularExpression(QStringLiteral(R"([█░▓▒\-=|]{2,})")));
+            chunk = chunk.simplified();
+
+            if (progressCb && !chunk.isEmpty()) {
+                progressCb(pct, chunk);
+            }
+        }
     });
 
     proc.start(QStringLiteral("flatpak"), args);
@@ -242,9 +367,28 @@ bool FlatpakPlugin::uninstall(const QString& packageId, const QVariantMap& optio
     args << QStringLiteral("uninstall") << QStringLiteral("-y") << packageId;
 
     QProcess proc;
-    QObject::connect(&proc, &QProcess::readyReadStandardOutput, [&proc, &progressCb, packageId]() {
-        QString line = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-        if (progressCb) progressCb(50, line);
+    QObject::connect(&proc, &QProcess::readyReadStandardOutput, [&proc, &progressCb]() {
+        QByteArray data = proc.readAllStandardOutput();
+        QString output = QString::fromUtf8(data);
+        QStringList chunks = output.split(QRegularExpression(QStringLiteral("[\r\n]+")), Qt::SkipEmptyParts);
+        for (QString chunk : chunks) {
+            chunk = chunk.trimmed();
+            if (chunk.isEmpty()) continue;
+
+            int pct = 50;
+            QRegularExpression pctRe(QStringLiteral(R"((\d{1,3})%)"));
+            auto match = pctRe.match(chunk);
+            if (match.hasMatch()) {
+                pct = match.captured(1).toInt();
+            }
+
+            chunk.remove(QRegularExpression(QStringLiteral(R"([█░▓▒\-=|]{2,})")));
+            chunk = chunk.simplified();
+
+            if (progressCb && !chunk.isEmpty()) {
+                progressCb(pct, chunk);
+            }
+        }
     });
 
     proc.start(QStringLiteral("flatpak"), args);
