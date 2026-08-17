@@ -100,4 +100,4 @@ astra --help
 
 ## Plugins
 
-For creating and installing custom package sources or scrapers, see `PLUGINS.md`.
+For creating and installing custom package sources or scrapers, see [PLUGINS](PLUGINS.md).
