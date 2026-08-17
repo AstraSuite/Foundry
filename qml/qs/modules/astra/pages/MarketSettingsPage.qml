@@ -15,7 +15,7 @@ PageBase {
     title: qsTr("Marketplace Settings")
 
     Column {
-        width: root.width
+        width: root ? root.width : 0
         spacing: Tokens.spacing.extraSmall / 2
 
         SectionHeader {
