@@ -1,3 +1,0 @@
-module Quickshell
-Singleton 1.0 Singleton.qml
-IpcHandler 1.0 IpcHandler.qml

@@ -1,3 +1,2 @@
 module qs.services
-singleton Audio 1.0 Audio.qml
 singleton Colours 1.0 Colours.qml

@@ -1,3 +1,0 @@
-module Quickshell.Services.Pipewire
-singleton Pipewire 1.0 Pipewire.qml
-PwNode 1.0 PwNode.qml
