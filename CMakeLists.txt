@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.19)
 
-project(AstraMarket VERSION 1.0.0 LANGUAGES CXX)
+project(AstraMarket VERSION 1.0.1 LANGUAGES CXX)
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT OR CMAKE_INSTALL_PREFIX STREQUAL "/usr/local")
     set(CMAKE_INSTALL_PREFIX "/usr" CACHE PATH "Default install prefix" FORCE)
