@@ -99,5 +99,23 @@ PageBase {
             value: qsTr("Flathub & System Repositories")
             icon: "deployed_code"
         }
+
+        SectionHeader {
+            text: qsTr("Credits & License")
+        }
+
+        InfoRow {
+            first: true
+            label: qsTr("License")
+            value: "GNU GPL v3.0"
+            icon: "gavel"
+        }
+
+        InfoRow {
+            last: true
+            label: qsTr("Design & Components")
+            value: "Caelestia Shell (GPL-3.0)"
+            icon: "favorite"
+        }
     }
 }

@@ -101,3 +101,12 @@ astra --help
 ## Plugins
 
 For creating and installing custom package sources or scrapers, see [PLUGINS](PLUGINS.md).
+
+## Acknowledgements
+
+- UI design language, tokens, and components adapted from [Caelestia Shell](https://github.com/caelestia-dots/shell).
+- Material Design icons and shape specifications by Google.
+
+## License
+
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**. See the [LICENSE](LICENSE) file for details.
