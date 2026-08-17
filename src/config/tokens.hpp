@@ -388,6 +388,9 @@ public:
     [[nodiscard]] Q_INVOKABLE static TokenConfig* forScreen(const QString& screen);
     static TokenConfig* create(QQmlEngine*, QJSEngine*);
 
+    void setSync(bool sync);
+    void resetDefaults();
+
 private:
     friend class MonitorConfigManager;
     explicit TokenConfig(QObject* parent = nullptr);

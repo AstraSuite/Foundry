@@ -41,7 +41,7 @@ PageBase {
 
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
-                    text: qsTr("v1.0.3")
+                    text: qsTr("v1.0.4")
                     font: Tokens.font.body.medium
                     color: Colours.palette.m3onSurfaceVariant
                 }

@@ -4,7 +4,8 @@
 #include <QString>
 #include <QVariantMap>
 #include <QFileSystemWatcher>
-#include <qqmlintegration.h>
+#include <QtQmlIntegration/qqmlintegration.h>
+#include <QtQml/qqmlengine.h>
 
 class ThemeWatcher : public QObject {
     Q_OBJECT
@@ -21,6 +22,9 @@ class ThemeWatcher : public QObject {
     Q_PROPERTY(bool syncTokens READ syncTokens WRITE setSyncTokens NOTIFY syncTokensChanged)
 
 public:
+    static ThemeWatcher* instance();
+    static ThemeWatcher* create(QQmlEngine* = nullptr, QJSEngine* = nullptr);
+
     explicit ThemeWatcher(QObject* parent = nullptr);
 
     [[nodiscard]] QString name() const { return m_name; }
@@ -37,6 +41,7 @@ public:
 
     Q_INVOKABLE void reload();
     Q_INVOKABLE void setMode(const QString& mode);
+    void applyTokensSync();
 
 signals:
     void themeChanged();
@@ -48,7 +53,7 @@ private:
     QString getSchemeFilePath() const;
 
     QFileSystemWatcher m_watcher;
-    QString m_name{ QStringLiteral("caelestia") };
+    QString m_name{ QStringLiteral("astramarket") };
     QString m_flavour{ QStringLiteral("default") };
     QString m_mode{ QStringLiteral("dark") };
     QString m_variant{ QStringLiteral("content") };

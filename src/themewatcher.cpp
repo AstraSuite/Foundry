@@ -1,4 +1,5 @@
 #include "themewatcher.hpp"
+#include "config/tokens.hpp"
 
 #include <QFile>
 #include <QFileInfo>
@@ -9,6 +10,15 @@
 #include <QStandardPaths>
 #include <QSettings>
 #include <QDebug>
+
+ThemeWatcher* ThemeWatcher::instance() {
+    static ThemeWatcher inst;
+    return &inst;
+}
+
+ThemeWatcher* ThemeWatcher::create(QQmlEngine*, QJSEngine*) {
+    return instance();
+}
 
 ThemeWatcher::ThemeWatcher(QObject* parent)
     : QObject(parent) {
@@ -25,7 +35,6 @@ ThemeWatcher::ThemeWatcher(QObject* parent)
     if (QFile::exists(filePath)) {
         m_watcher.addPath(filePath);
     } else {
-
         m_watcher.addPath(fi.dir().path());
     }
 
@@ -33,14 +42,18 @@ ThemeWatcher::ThemeWatcher(QObject* parent)
         if (!m_watcher.files().contains(path) && QFile::exists(path)) {
             m_watcher.addPath(path);
         }
-        reload();
+        if (m_syncScheme) {
+            reload();
+        }
     });
     connect(&m_watcher, &QFileSystemWatcher::directoryChanged, this, [this](const QString&) {
         const QString path = getSchemeFilePath();
         if (QFile::exists(path) && !m_watcher.files().contains(path)) {
             m_watcher.addPath(path);
         }
-        reload();
+        if (m_syncScheme) {
+            reload();
+        }
     });
 
     reload();
@@ -62,8 +75,12 @@ void ThemeWatcher::setSyncTokens(bool sync) {
         QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
         settings.setValue(QStringLiteral("theme/syncTokens"), sync);
         emit syncTokensChanged();
-        reload();
+        applyTokensSync();
     }
+}
+
+void ThemeWatcher::applyTokensSync() {
+    caelestia::config::TokenConfig::instance()->setSync(m_syncTokens);
 }
 
 QString ThemeWatcher::getSchemeFilePath() const {
@@ -78,42 +95,47 @@ void ThemeWatcher::applyFallbackColours() {
     m_variant = QStringLiteral("content");
 
     m_colours = QVariantMap{
-        { QStringLiteral("background"), QStringLiteral("0a0f0f") },
-        { QStringLiteral("surface"), QStringLiteral("0a0f0f") },
-        { QStringLiteral("surfaceDim"), QStringLiteral("0a0f0f") },
-        { QStringLiteral("surfaceBright"), QStringLiteral("242e2d") },
-        { QStringLiteral("surfaceContainerLowest"), QStringLiteral("000000") },
-        { QStringLiteral("surfaceContainerLow"), QStringLiteral("0e1514") },
-        { QStringLiteral("surfaceContainer"), QStringLiteral("131b1a") },
-        { QStringLiteral("surfaceContainerHigh"), QStringLiteral("192120") },
-        { QStringLiteral("surfaceContainerHighest"), QStringLiteral("1d2827") },
-        { QStringLiteral("onSurface"), QStringLiteral("dce8e6") },
-        { QStringLiteral("onBackground"), QStringLiteral("dce8e6") },
-        { QStringLiteral("surfaceVariant"), QStringLiteral("1d2827") },
-        { QStringLiteral("onSurfaceVariant"), QStringLiteral("a2adac") },
-        { QStringLiteral("outline"), QStringLiteral("6d7876") },
-        { QStringLiteral("outlineVariant"), QStringLiteral("3f4a49") },
-        { QStringLiteral("primary"), QStringLiteral("9bd0cc") },
-        { QStringLiteral("onPrimary"), QStringLiteral("0d4845") },
-        { QStringLiteral("primaryContainer"), QStringLiteral("255b58") },
-        { QStringLiteral("onPrimaryContainer"), QStringLiteral("b8ede9") },
-        { QStringLiteral("secondary"), QStringLiteral("b0ccc9") },
-        { QStringLiteral("onSecondary"), QStringLiteral("2c4543") },
-        { QStringLiteral("secondaryContainer"), QStringLiteral("27403e") },
-        { QStringLiteral("onSecondaryContainer"), QStringLiteral("a9c5c2") },
-        { QStringLiteral("tertiary"), QStringLiteral("d5efff") },
-        { QStringLiteral("onTertiary"), QStringLiteral("2e5c72") },
-        { QStringLiteral("tertiaryContainer"), QStringLiteral("b6e3fe") },
-        { QStringLiteral("onTertiaryContainer"), QStringLiteral("255369") },
-        { QStringLiteral("error"), QStringLiteral("fa746f") },
-        { QStringLiteral("onError"), QStringLiteral("490006") },
-        { QStringLiteral("errorContainer"), QStringLiteral("871f21") },
-        { QStringLiteral("onErrorContainer"), QStringLiteral("ff9993") }
+        { QStringLiteral("background"), QStringLiteral("111418") },
+        { QStringLiteral("surface"), QStringLiteral("111418") },
+        { QStringLiteral("surfaceDim"), QStringLiteral("0e1115") },
+        { QStringLiteral("surfaceBright"), QStringLiteral("282e36") },
+        { QStringLiteral("surfaceContainerLowest"), QStringLiteral("080a0c") },
+        { QStringLiteral("surfaceContainerLow"), QStringLiteral("14181f") },
+        { QStringLiteral("surfaceContainer"), QStringLiteral("1a2029") },
+        { QStringLiteral("surfaceContainerHigh"), QStringLiteral("202732") },
+        { QStringLiteral("surfaceContainerHighest"), QStringLiteral("272f3d") },
+        { QStringLiteral("onSurface"), QStringLiteral("e1e2e8") },
+        { QStringLiteral("onBackground"), QStringLiteral("e1e2e8") },
+        { QStringLiteral("surfaceVariant"), QStringLiteral("272f3d") },
+        { QStringLiteral("onSurfaceVariant"), QStringLiteral("a0a8b4") },
+        { QStringLiteral("outline"), QStringLiteral("636c7a") },
+        { QStringLiteral("outlineVariant"), QStringLiteral("373f4b") },
+        { QStringLiteral("primary"), QStringLiteral("64b5f6") },
+        { QStringLiteral("onPrimary"), QStringLiteral("003258") },
+        { QStringLiteral("primaryContainer"), QStringLiteral("0b4a7a") },
+        { QStringLiteral("onPrimaryContainer"), QStringLiteral("d1e4ff") },
+        { QStringLiteral("secondary"), QStringLiteral("9bc8f5") },
+        { QStringLiteral("onSecondary"), QStringLiteral("003355") },
+        { QStringLiteral("secondaryContainer"), QStringLiteral("1b4970") },
+        { QStringLiteral("onSecondaryContainer"), QStringLiteral("cde5ff") },
+        { QStringLiteral("tertiary"), QStringLiteral("b3c5ff") },
+        { QStringLiteral("onTertiary"), QStringLiteral("192e60") },
+        { QStringLiteral("tertiaryContainer"), QStringLiteral("314478") },
+        { QStringLiteral("onTertiaryContainer"), QStringLiteral("dbe1ff") },
+        { QStringLiteral("error"), QStringLiteral("ffb4ab") },
+        { QStringLiteral("onError"), QStringLiteral("690005") },
+        { QStringLiteral("errorContainer"), QStringLiteral("93000a") },
+        { QStringLiteral("onErrorContainer"), QStringLiteral("ffdad6") }
     };
     emit themeChanged();
 }
 
 void ThemeWatcher::reload() {
+    if (!m_syncScheme) {
+        applyFallbackColours();
+        return;
+    }
+
     const QString path = getSchemeFilePath();
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -128,14 +150,15 @@ void ThemeWatcher::reload() {
     const QJsonDocument doc = QJsonDocument::fromJson(data, &parseErr);
     if (parseErr.error != QJsonParseError::NoError || !doc.isObject()) {
         qWarning() << "ThemeWatcher: Failed to parse scheme JSON:" << parseErr.errorString();
+        applyFallbackColours();
         return;
     }
 
     const QJsonObject root = doc.object();
-    m_name = root.value(QStringLiteral("name")).toString(m_name);
-    m_flavour = root.value(QStringLiteral("flavour")).toString(m_flavour);
-    m_mode = root.value(QStringLiteral("mode")).toString(m_mode);
-    m_variant = root.value(QStringLiteral("variant")).toString(m_variant);
+    m_name = root.value(QStringLiteral("name")).toString(QStringLiteral("caelestia"));
+    m_flavour = root.value(QStringLiteral("flavour")).toString(QStringLiteral("default"));
+    m_mode = root.value(QStringLiteral("mode")).toString(QStringLiteral("dark"));
+    m_variant = root.value(QStringLiteral("variant")).toString(QStringLiteral("content"));
 
     if (root.contains(QStringLiteral("colours")) && root.value(QStringLiteral("colours")).isObject()) {
         m_colours = root.value(QStringLiteral("colours")).toObject().toVariantMap();
@@ -145,7 +168,7 @@ void ThemeWatcher::reload() {
 }
 
 void ThemeWatcher::setMode(const QString& mode) {
-    if (!QStandardPaths::findExecutable(QStringLiteral("caelestia")).isEmpty()) {
+    if (m_syncScheme && !QStandardPaths::findExecutable(QStringLiteral("caelestia")).isEmpty()) {
         QProcess::startDetached(QStringLiteral("caelestia"), { QStringLiteral("scheme"), QStringLiteral("set"), QStringLiteral("--notify"), QStringLiteral("-m"), mode });
     } else {
         m_mode = mode;

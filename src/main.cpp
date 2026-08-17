@@ -237,7 +237,7 @@ int main(int argc, char* argv[]) {
     app.setApplicationName(QStringLiteral("astra"));
     app.setOrganizationName(QStringLiteral("AstraMarket"));
     app.setDesktopFileName(QStringLiteral("astra"));
-    app.setApplicationVersion(QStringLiteral("1.0.3"));
+    app.setApplicationVersion(QStringLiteral("1.0.4"));
 
     if (!launchGui) {
         PackageManager pm;
@@ -256,9 +256,7 @@ int main(int argc, char* argv[]) {
         QFontDatabase::addApplicationFont(QStringLiteral("assets/fonts/GoogleSansFlex-VariableFont_GRAD,ROND,opsz,slnt,wdth,wght.ttf"));
     }
 
-    qmlRegisterSingletonType<ThemeWatcher>("AstraMarket.Theme", 1, 0, "ThemeWatcher", [](QQmlEngine*, QJSEngine*) -> QObject* {
-        return new ThemeWatcher();
-    });
+    qmlRegisterSingletonType<ThemeWatcher>("AstraMarket.Theme", 1, 0, "ThemeWatcher", &ThemeWatcher::create);
 
     qmlRegisterSingletonType<AppImageInstaller>("AstraMarket.Market", 1, 0, "AppImageInstaller", [](QQmlEngine*, QJSEngine*) -> QObject* {
         return new AppImageInstaller();

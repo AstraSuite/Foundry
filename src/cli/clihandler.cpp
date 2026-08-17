@@ -15,7 +15,7 @@
 #define ANSI_MAGENTA "\033[35m"
 
 void CliHandler::printVersion() {
-    std::cout << ANSI_BOLD ANSI_CYAN "astra" ANSI_RESET " version " ANSI_GREEN "1.0.3" ANSI_RESET " (AstraMarket Universal Package Manager)\n";
+    std::cout << ANSI_BOLD ANSI_CYAN "astra" ANSI_RESET " version " ANSI_GREEN "1.0.4" ANSI_RESET " (AstraMarket Universal Package Manager)\n";
 }
 
 void CliHandler::printHelp() {
