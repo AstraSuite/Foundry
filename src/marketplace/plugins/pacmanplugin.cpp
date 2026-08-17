@@ -180,28 +180,50 @@ bool PacmanPlugin::install(const QString& packageId, const QVariantMap& options,
     Q_UNUSED(options);
     if (!isAvailable()) return false;
     QProcess proc;
-    QObject::connect(&proc, &QProcess::readyReadStandardOutput, [&proc, &progressCb, packageId]() {
-        QString line = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-        if (progressCb) progressCb(50, line);
-    });
-
+    proc.setProcessChannelMode(QProcess::MergedChannels);
     proc.start(QStringLiteral("pkexec"), {QStringLiteral("pacman"), QStringLiteral("-S"), QStringLiteral("--noconfirm"), packageId});
-    bool finished = proc.waitForFinished(-1);
-    return finished && (proc.exitCode() == 0);
+    if (!proc.waitForStarted(5000)) return false;
+
+    while (proc.state() == QProcess::Running) {
+        if (proc.waitForReadyRead(200)) {
+            while (proc.canReadLine()) {
+                QString line = QString::fromUtf8(proc.readLine()).trimmed();
+                if (!line.isEmpty() && progressCb) progressCb(50, line);
+            }
+        }
+    }
+    QString rest = QString::fromUtf8(proc.readAll()).trimmed();
+    if (!rest.isEmpty() && progressCb) {
+        for (const QString& line : rest.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
+            progressCb(100, line.trimmed());
+        }
+    }
+    return proc.exitCode() == 0;
 }
 
 bool PacmanPlugin::uninstall(const QString& packageId, const QVariantMap& options, ProgressCallback progressCb) {
     Q_UNUSED(options);
     if (!isAvailable()) return false;
     QProcess proc;
-    QObject::connect(&proc, &QProcess::readyReadStandardOutput, [&proc, &progressCb, packageId]() {
-        QString line = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-        if (progressCb) progressCb(50, line);
-    });
-
+    proc.setProcessChannelMode(QProcess::MergedChannels);
     proc.start(QStringLiteral("pkexec"), {QStringLiteral("pacman"), QStringLiteral("-Rns"), QStringLiteral("--noconfirm"), packageId});
-    bool finished = proc.waitForFinished(-1);
-    return finished && (proc.exitCode() == 0);
+    if (!proc.waitForStarted(5000)) return false;
+
+    while (proc.state() == QProcess::Running) {
+        if (proc.waitForReadyRead(200)) {
+            while (proc.canReadLine()) {
+                QString line = QString::fromUtf8(proc.readLine()).trimmed();
+                if (!line.isEmpty() && progressCb) progressCb(50, line);
+            }
+        }
+    }
+    QString rest = QString::fromUtf8(proc.readAll()).trimmed();
+    if (!rest.isEmpty() && progressCb) {
+        for (const QString& line : rest.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
+            progressCb(100, line.trimmed());
+        }
+    }
+    return proc.exitCode() == 0;
 }
 
 bool PacmanPlugin::launch(const QString& packageId) {

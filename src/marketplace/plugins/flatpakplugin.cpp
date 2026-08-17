@@ -331,33 +331,36 @@ bool FlatpakPlugin::install(const QString& packageId, const QVariantMap& options
          << packageId;
 
     QProcess proc;
-    QObject::connect(&proc, &QProcess::readyReadStandardOutput, [&proc, &progressCb]() {
-        QByteArray data = proc.readAllStandardOutput();
-        QString output = QString::fromUtf8(data);
-        QStringList chunks = output.split(QRegularExpression(QStringLiteral("[\r\n]+")), Qt::SkipEmptyParts);
-        for (QString chunk : chunks) {
-            chunk = chunk.trimmed();
-            if (chunk.isEmpty()) continue;
+    proc.setProcessChannelMode(QProcess::MergedChannels);
+    proc.start(QStringLiteral("flatpak"), args);
+    if (!proc.waitForStarted(5000)) return false;
 
-            int pct = 50;
-            QRegularExpression pctRe(QStringLiteral(R"((\d{1,3})%)"));
-            auto match = pctRe.match(chunk);
-            if (match.hasMatch()) {
-                pct = match.captured(1).toInt();
-            }
+    while (proc.state() == QProcess::Running) {
+        if (proc.waitForReadyRead(200)) {
+            QByteArray data = proc.readAll();
+            QString output = QString::fromUtf8(data);
+            QStringList chunks = output.split(QRegularExpression(QStringLiteral("[\r\n]+")), Qt::SkipEmptyParts);
+            for (QString chunk : chunks) {
+                chunk = chunk.trimmed();
+                if (chunk.isEmpty()) continue;
 
-            chunk.remove(QRegularExpression(QStringLiteral(R"([█░▓▒\-=|]{2,})")));
-            chunk = chunk.simplified();
+                int pct = 50;
+                QRegularExpression pctRe(QStringLiteral(R"((\d{1,3})%)"));
+                auto match = pctRe.match(chunk);
+                if (match.hasMatch()) {
+                    pct = match.captured(1).toInt();
+                }
 
-            if (progressCb && !chunk.isEmpty()) {
-                progressCb(pct, chunk);
+                chunk.remove(QRegularExpression(QStringLiteral(R"([█░▓▒\-=|]{2,})")));
+                chunk = chunk.simplified();
+
+                if (progressCb && !chunk.isEmpty()) {
+                    progressCb(pct, chunk);
+                }
             }
         }
-    });
-
-    proc.start(QStringLiteral("flatpak"), args);
-    bool finished = proc.waitForFinished(-1);
-    return finished && (proc.exitCode() == 0);
+    }
+    return proc.exitCode() == 0;
 }
 
 bool FlatpakPlugin::uninstall(const QString& packageId, const QVariantMap& options, ProgressCallback progressCb) {
@@ -367,33 +370,36 @@ bool FlatpakPlugin::uninstall(const QString& packageId, const QVariantMap& optio
     args << QStringLiteral("uninstall") << QStringLiteral("-y") << packageId;
 
     QProcess proc;
-    QObject::connect(&proc, &QProcess::readyReadStandardOutput, [&proc, &progressCb]() {
-        QByteArray data = proc.readAllStandardOutput();
-        QString output = QString::fromUtf8(data);
-        QStringList chunks = output.split(QRegularExpression(QStringLiteral("[\r\n]+")), Qt::SkipEmptyParts);
-        for (QString chunk : chunks) {
-            chunk = chunk.trimmed();
-            if (chunk.isEmpty()) continue;
+    proc.setProcessChannelMode(QProcess::MergedChannels);
+    proc.start(QStringLiteral("flatpak"), args);
+    if (!proc.waitForStarted(5000)) return false;
 
-            int pct = 50;
-            QRegularExpression pctRe(QStringLiteral(R"((\d{1,3})%)"));
-            auto match = pctRe.match(chunk);
-            if (match.hasMatch()) {
-                pct = match.captured(1).toInt();
-            }
+    while (proc.state() == QProcess::Running) {
+        if (proc.waitForReadyRead(200)) {
+            QByteArray data = proc.readAll();
+            QString output = QString::fromUtf8(data);
+            QStringList chunks = output.split(QRegularExpression(QStringLiteral("[\r\n]+")), Qt::SkipEmptyParts);
+            for (QString chunk : chunks) {
+                chunk = chunk.trimmed();
+                if (chunk.isEmpty()) continue;
 
-            chunk.remove(QRegularExpression(QStringLiteral(R"([█░▓▒\-=|]{2,})")));
-            chunk = chunk.simplified();
+                int pct = 50;
+                QRegularExpression pctRe(QStringLiteral(R"((\d{1,3})%)"));
+                auto match = pctRe.match(chunk);
+                if (match.hasMatch()) {
+                    pct = match.captured(1).toInt();
+                }
 
-            if (progressCb && !chunk.isEmpty()) {
-                progressCb(pct, chunk);
+                chunk.remove(QRegularExpression(QStringLiteral(R"([█░▓▒\-=|]{2,})")));
+                chunk = chunk.simplified();
+
+                if (progressCb && !chunk.isEmpty()) {
+                    progressCb(pct, chunk);
+                }
             }
         }
-    });
-
-    proc.start(QStringLiteral("flatpak"), args);
-    bool finished = proc.waitForFinished(-1);
-    return finished && (proc.exitCode() == 0);
+    }
+    return proc.exitCode() == 0;
 }
 
 bool FlatpakPlugin::launch(const QString& packageId) {

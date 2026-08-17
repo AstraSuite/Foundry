@@ -8,6 +8,7 @@ import qs.services
 import qs.modules.astra.common
 import AstraMarket.Market 1.0
 import AstraMarket.Theme 1.0
+import AstraMarket.Tray 1.0
 
 PageBase {
     id: root
@@ -81,6 +82,142 @@ PageBase {
         Item { width: 1; height: Tokens.padding.small }
 
         SectionHeader {
+            text: qsTr("System Tray & Background Daemon")
+        }
+
+        ToggleRow {
+            width: parent.width
+            first: true
+            text: qsTr("Enable System Tray Icon")
+            subtext: qsTr("Show status and quick actions in the system tray / notification area")
+            checked: TrayManager.trayEnabled
+            onCheckedChanged: {
+                TrayManager.trayEnabled = checked;
+            }
+        }
+
+        ToggleRow {
+            width: parent.width
+            text: qsTr("Close Window to Tray")
+            subtext: qsTr("Keep Astra Market running in the background when the main window is closed")
+            checked: TrayManager.closeToTray
+            enabled: TrayManager.trayEnabled
+            disabled: !TrayManager.trayEnabled
+            onCheckedChanged: {
+                TrayManager.closeToTray = checked;
+            }
+        }
+
+        ToggleRow {
+            width: parent.width
+            last: true
+            text: qsTr("Start Minimized on Boot")
+            subtext: qsTr("Launch Astra Market silently in the system tray on login (~/.config/autostart)")
+            checked: TrayManager.autostart
+            onCheckedChanged: {
+                TrayManager.autostart = checked;
+            }
+        }
+
+        Item { width: 1; height: Tokens.padding.small }
+
+        SectionHeader {
+            text: qsTr("Automated Update Checks & Notifications")
+        }
+
+        StepperRow {
+            width: parent.width
+            first: true
+            label: qsTr("Check Frequency")
+            subtext: TrayManager.checkIntervalHours === 0 ? qsTr("Manual updates only (scheduled checks disabled)") : qsTr("Check for updates every %1 %2").arg(TrayManager.checkIntervalHours).arg(TrayManager.checkIntervalHours === 1 ? qsTr("hour") : qsTr("hours"))
+            from: 0
+            stepSize: 1
+            suffix: "h"
+            value: TrayManager.checkIntervalHours
+            onMoved: (val) => {
+                TrayManager.checkIntervalHours = Math.round(val);
+            }
+        }
+
+        StepperRow {
+            width: parent.width
+            label: qsTr("Notification Threshold")
+            subtext: qsTr("Notify when %1 %2 available").arg(TrayManager.notifyThreshold).arg(TrayManager.notifyThreshold === 1 ? qsTr("or more update is") : qsTr("or more updates are"))
+            from: 1
+            stepSize: 1
+            suffix: ""
+            value: TrayManager.notifyThreshold
+            onMoved: (val) => {
+                TrayManager.notifyThreshold = Math.round(val);
+            }
+        }
+
+        ToggleRow {
+            visible: PackageManager.isCaelestiaAvailable
+            width: parent.width
+            text: qsTr("Use 'caelestia update' for System Updates")
+            subtext: qsTr("Delegate Pacman and AUR updates to Caelestia CLI (bypasses individual Pacman/AUR checks)")
+            checked: TrayManager.useCaelestiaUpdate
+            onCheckedChanged: {
+                TrayManager.useCaelestiaUpdate = checked;
+            }
+        }
+
+        ToggleRow {
+            width: parent.width
+            last: !TrayManager.useCaelestiaUpdate && !PackageManager.isPacmanAvailable && !PackageManager.isAurAvailable
+            text: qsTr("Auto-Update Flatpak Packages")
+            subtext: qsTr("Automatically download and apply Flathub updates in the background")
+            checked: TrayManager.autoUpdateFlatpak
+            enabled: PackageManager.isFlatpakAvailable && PackageManager.enableFlatpak
+            disabled: !PackageManager.isFlatpakAvailable || !PackageManager.enableFlatpak
+            onCheckedChanged: {
+                TrayManager.autoUpdateFlatpak = checked;
+            }
+        }
+
+        ToggleRow {
+            visible: TrayManager.useCaelestiaUpdate
+            width: parent.width
+            last: true
+            text: qsTr("Auto-Update via Caelestia CLI")
+            subtext: qsTr("Automatically run 'caelestia update --noconfirm' on scheduled update checks")
+            checked: TrayManager.autoUpdateCaelestia
+            onCheckedChanged: {
+                TrayManager.autoUpdateCaelestia = checked;
+            }
+        }
+
+        ToggleRow {
+            visible: !TrayManager.useCaelestiaUpdate
+            width: parent.width
+            text: qsTr("Auto-Update Pacman Packages")
+            subtext: qsTr("Automatically download and apply native system updates in the background")
+            checked: TrayManager.autoUpdatePacman
+            enabled: PackageManager.isPacmanAvailable && PackageManager.enablePacman
+            disabled: !PackageManager.isPacmanAvailable || !PackageManager.enablePacman
+            onCheckedChanged: {
+                TrayManager.autoUpdatePacman = checked;
+            }
+        }
+
+        ToggleRow {
+            visible: !TrayManager.useCaelestiaUpdate
+            width: parent.width
+            last: true
+            text: qsTr("Auto-Update AUR Packages")
+            subtext: qsTr("Automatically rebuild and update AUR packages in the background")
+            checked: TrayManager.autoUpdateAur
+            enabled: PackageManager.isAurAvailable && PackageManager.enableAur
+            disabled: !PackageManager.isAurAvailable || !PackageManager.enableAur
+            onCheckedChanged: {
+                TrayManager.autoUpdateAur = checked;
+            }
+        }
+
+        Item { width: 1; height: Tokens.padding.small }
+
+        SectionHeader {
             text: qsTr("Caelestia Appearance Sync")
         }
 
@@ -106,5 +243,26 @@ PageBase {
             }
         }
 
+        Item { width: 1; height: Tokens.padding.small }
+
+        SectionHeader {
+            text: qsTr("Status")
+        }
+
+        InfoRow {
+            width: parent.width
+            first: true
+            label: qsTr("Last Update Check")
+            value: TrayManager.lastCheckString
+            icon: "schedule"
+        }
+
+        InfoRow {
+            width: parent.width
+            last: true
+            label: qsTr("Pending Updates")
+            value: qsTr("%1 available").arg(TrayManager.pendingUpdateCount)
+            icon: "update"
+        }
     }
 }

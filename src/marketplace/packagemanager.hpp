@@ -26,6 +26,8 @@ class PackageManager : public QObject {
     Q_PROPERTY(bool isPacmanAvailable READ isPacmanAvailable CONSTANT)
     Q_PROPERTY(bool isAurAvailable READ isAurAvailable CONSTANT)
     Q_PROPERTY(bool isAppImageAvailable READ isAppImageAvailable CONSTANT)
+    Q_PROPERTY(bool isCaelestiaAvailable READ isCaelestiaAvailable CONSTANT)
+    Q_PROPERTY(bool useCaelestiaUpdate READ useCaelestiaUpdate WRITE setUseCaelestiaUpdate NOTIFY useCaelestiaUpdateChanged)
     Q_PROPERTY(bool enableFlatpak READ enableFlatpak WRITE setEnableFlatpak NOTIFY enableFlatpakChanged)
     Q_PROPERTY(bool enablePacman READ enablePacman WRITE setEnablePacman NOTIFY enablePacmanChanged)
     Q_PROPERTY(bool enableAur READ enableAur WRITE setEnableAur NOTIFY enableAurChanged)
@@ -47,6 +49,7 @@ public:
     bool enablePacman() const;
     bool enableAur() const;
     bool enableAppImage() const;
+    bool useCaelestiaUpdate() const;
     QString aurHelper() const;
     QString statusMessage() const { return m_statusMessage; }
     QStringList logLines() const { return m_logLines; }
@@ -56,11 +59,13 @@ public:
     bool isPacmanAvailable() const;
     bool isAurAvailable() const;
     bool isAppImageAvailable() const;
+    bool isCaelestiaAvailable() const;
 
     void setEnableFlatpak(bool enable);
     void setEnablePacman(bool enable);
     void setEnableAur(bool enable);
     void setEnableAppImage(bool enable);
+    void setUseCaelestiaUpdate(bool enable);
     void setAurHelper(const QString& helper);
 
     void registerPlugin(IPackagePlugin* plugin);
@@ -92,6 +97,7 @@ signals:
     void enablePacmanChanged();
     void enableAurChanged();
     void enableAppImageChanged();
+    void useCaelestiaUpdateChanged();
     void aurHelperChanged();
     void statusMessageChanged();
     void logLinesChanged();

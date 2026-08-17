@@ -13,9 +13,12 @@
 #define ANSI_YELLOW  "\033[33m"
 #define ANSI_RED     "\033[31m"
 #define ANSI_MAGENTA "\033[35m"
+#ifndef ASTRA_VERSION
+#define ASTRA_VERSION "1.1.0"
+#endif
 
 void CliHandler::printVersion() {
-    std::cout << ANSI_BOLD ANSI_CYAN "astra" ANSI_RESET " version " ANSI_GREEN "1.0.4" ANSI_RESET " (AstraMarket Universal Package Manager)\n";
+    std::cout << ANSI_BOLD ANSI_CYAN "astra" ANSI_RESET " version " ANSI_GREEN ASTRA_VERSION ANSI_RESET " (AstraMarket Universal Package Manager)\n";
 }
 
 void CliHandler::printHelp() {
@@ -30,7 +33,8 @@ void CliHandler::printHelp() {
               << "  " ANSI_GREEN "update" ANSI_RESET "                Check for or perform updates (alias: upgrade)\n"
               << "  " ANSI_GREEN "info" ANSI_RESET " <pkg>              Display metadata and details for a package\n"
               << "  " ANSI_GREEN "sources" ANSI_RESET "               List registered package plugins & sources (alias: plugins)\n"
-              << "  " ANSI_GREEN "gui" ANSI_RESET "                   Launch the graphical interface (alias: --gui, -g)\n\n"
+              << "  " ANSI_GREEN "gui" ANSI_RESET "                   Launch the graphical interface (alias: --gui, -g)\n"
+              << "  " ANSI_GREEN "tray" ANSI_RESET "                  Launch minimized in system tray (alias: --tray, -t)\n\n"
               << ANSI_BOLD "OPTIONS:" ANSI_RESET "\n"
               << "  " ANSI_YELLOW "-s, --source" ANSI_RESET " <name>     Target specific package source (Flatpak, Pacman, AUR, AppImage, etc.)\n"
               << "  " ANSI_YELLOW "--scope" ANSI_RESET " <user|system>    Specify installation scope (user or system, default: user for Flatpak)\n"

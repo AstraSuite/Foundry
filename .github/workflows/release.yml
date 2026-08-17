@@ -1,0 +1,130 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm --needed \
+            base-devel \
+            git \
+            cmake \
+            ninja \
+            qt6-base \
+            qt6-declarative \
+            qt6-shadertools \
+            qt6-svg \
+            qt6-tools \
+            tar \
+            gzip
+
+      - name: Mark git safe directory
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version
+        id: get_version
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG_NAME#v}"
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr
+
+      - name: Build AstraMarket
+        run: |
+          cmake --build build
+
+      - name: Package Distribution Tarball & Standalone Binary
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          DIST_DIR="astra-v${VERSION}-linux-x86_64"
+          mkdir -p "dist/${DIST_DIR}/bin"
+          mkdir -p "dist/${DIST_DIR}/share/applications"
+          mkdir -p "dist/${DIST_DIR}/share/icons/hicolor/scalable/apps"
+          mkdir -p "dist/${DIST_DIR}/share/polkit-1/actions"
+          mkdir -p "dist/${DIST_DIR}/share/polkit-1/rules.d"
+
+          cp build/astra "dist/${DIST_DIR}/bin/"
+          cp build/astra "dist/astra-linux-x86_64"
+          cp assets/astra.desktop "dist/${DIST_DIR}/share/applications/"
+          cp assets/icons/AstraMarket.svg "dist/${DIST_DIR}/share/icons/hicolor/scalable/apps/"
+          cp assets/icons/tray-dark.svg "dist/${DIST_DIR}/share/icons/hicolor/scalable/apps/"
+          cp assets/icons/tray-light.svg "dist/${DIST_DIR}/share/icons/hicolor/scalable/apps/"
+          cp assets/polkit/com.astramarket.pacman.policy "dist/${DIST_DIR}/share/polkit-1/actions/"
+          cp assets/polkit/10-astramarket-pacman.rules "dist/${DIST_DIR}/share/polkit-1/rules.d/"
+          cp LICENSE "dist/${DIST_DIR}/"
+          cp README.md "dist/${DIST_DIR}/"
+
+          cat << 'EOF' > "dist/${DIST_DIR}/install.sh"
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          PREFIX="${PREFIX:-/usr/local}"
+          if [ "$(id -u)" -ne 0 ] && [ "$PREFIX" = "/usr" ] || [ "$PREFIX" = "/usr/local" ]; then
+              SUDO="sudo"
+          else
+              SUDO=""
+          fi
+
+          echo "Installing AstraMarket to ${PREFIX}..."
+          $SUDO mkdir -p "${PREFIX}/bin"
+          $SUDO mkdir -p "${PREFIX}/share/applications"
+          $SUDO mkdir -p "${PREFIX}/share/icons/hicolor/scalable/apps"
+          $SUDO mkdir -p "/usr/share/polkit-1/actions"
+          $SUDO mkdir -p "/usr/share/polkit-1/rules.d"
+
+          $SUDO install -Dm755 bin/astra "${PREFIX}/bin/astra"
+          $SUDO install -Dm644 share/applications/astra.desktop "${PREFIX}/share/applications/astra.desktop"
+          $SUDO install -Dm644 share/icons/hicolor/scalable/apps/AstraMarket.svg "${PREFIX}/share/icons/hicolor/scalable/apps/AstraMarket.svg"
+          $SUDO install -Dm644 share/icons/hicolor/scalable/apps/tray-dark.svg "${PREFIX}/share/icons/hicolor/scalable/apps/tray-dark.svg"
+          $SUDO install -Dm644 share/icons/hicolor/scalable/apps/tray-light.svg "${PREFIX}/share/icons/hicolor/scalable/apps/tray-light.svg"
+          $SUDO install -Dm644 share/polkit-1/actions/com.astramarket.pacman.policy "/usr/share/polkit-1/actions/com.astramarket.pacman.policy"
+          $SUDO install -Dm644 share/polkit-1/rules.d/10-astramarket-pacman.rules "/usr/share/polkit-1/rules.d/10-astramarket-pacman.rules"
+
+          echo "AstraMarket installed successfully!"
+          EOF
+          chmod +x "dist/${DIST_DIR}/install.sh"
+
+          cd dist
+          tar -czvf "${DIST_DIR}.tar.gz" "${DIST_DIR}"
+          sha256sum "${DIST_DIR}.tar.gz" > "${DIST_DIR}.tar.gz.sha256"
+          sha256sum "astra-linux-x86_64" > "astra-linux-x86_64.sha256"
+          cd ..
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag }}
+          name: AstraMarket ${{ steps.get_version.outputs.tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist/astra-v${{ steps.get_version.outputs.version }}-linux-x86_64.tar.gz
+            dist/astra-v${{ steps.get_version.outputs.version }}-linux-x86_64.tar.gz.sha256
+            dist/astra-linux-x86_64
+            dist/astra-linux-x86_64.sha256

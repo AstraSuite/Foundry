@@ -2,12 +2,10 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import M3Shapes
 import AstraMarket.Config
 import qs.components
 import qs.components.controls
 import qs.components.containers
-import qs.components.effects
 import qs.services
 import qs.modules.astra.common
 import AstraMarket.Market 1.0
@@ -20,14 +18,29 @@ PageBase {
     property var updatesList: []
     property var selectedApp: null
     property bool isLoading: false
+    property int visibleCount: 25
 
     function checkUpdates(): void {
         root.isLoading = true;
+        root.visibleCount = 25;
         PackageManager.checkForUpdatesAsync();
     }
 
     Component.onCompleted: {
         checkUpdates();
+    }
+
+    Item {
+        Connections {
+            target: root.flickable
+            function onContentYChanged(): void {
+                if (root.flickable && root.flickable.contentY + root.flickable.height >= root.flickable.contentHeight - 400) {
+                    if (!root.isLoading && root.visibleCount < root.updatesList.length) {
+                        root.visibleCount = Math.min(root.visibleCount + 20, root.updatesList.length);
+                    }
+                }
+            }
+        }
     }
 
     data: [
@@ -71,6 +84,14 @@ PageBase {
             Item { Layout.fillWidth: true }
 
             IconTextButton {
+                icon: "terminal"
+                text: qsTr("Logs")
+                type: ButtonBase.Tonal
+                Layout.alignment: Qt.AlignVCenter
+                onClicked: root.nState.openSubPage(2)
+            }
+
+            IconTextButton {
                 visible: root.updatesList.length > 0
                 icon: "system_update_alt"
                 text: qsTr("Update All")
@@ -101,7 +122,9 @@ PageBase {
                 }
 
                 StyledText {
-                    text: qsTr("Checking for updates...")
+                    text: PackageManager.isBusy
+                        ? (PackageManager.statusMessage || qsTr("Applying updates..."))
+                        : qsTr("Checking for updates...")
                     font: Tokens.font.title.medium
                     color: Colours.palette.m3onSurfaceVariant
                     Layout.alignment: Qt.AlignHCenter
@@ -111,7 +134,7 @@ PageBase {
 
         Repeater {
             id: updatesRepeater
-            model: root.isLoading ? [] : root.updatesList
+            model: root.isLoading ? [] : root.updatesList.slice(0, root.visibleCount)
 
             ConnectedRect {
                 id: cardRect
@@ -138,44 +161,24 @@ PageBase {
                     anchors.margins: Tokens.padding.medium
                     spacing: Tokens.padding.medium
 
-                    Item {
+                    StyledRect {
                         width: 44
                         height: 44
+                        radius: Tokens.rounding.medium
+                        color: Colours.palette.m3surfaceContainerHigh
+                        clip: true
                         Layout.alignment: Qt.AlignVCenter
-
-                        Item {
-                            id: updateCookieShapeWrapper
-                            anchors.fill: parent
-                            layer.enabled: true
-                            layer.smooth: true
-                            layer.samples: 4
-
-                            MaterialShape {
-                                anchors.fill: parent
-                                shape: MaterialShape.Cookie9Sided
-                                color: Colours.palette.m3primaryContainer
-                                antialiasing: true
-                                smooth: true
-                            }
-                        }
 
                         Image {
                             id: appIconImg
                             anchors.fill: parent
+                            anchors.margins: 4
                             asynchronous: true
-                            fillMode: Image.PreserveAspectCrop
+                            fillMode: Image.PreserveAspectFit
                             smooth: true
                             mipmap: true
-                            antialiasing: true
                             visible: appIconImg.status === Image.Ready && appIconImg.source.toString() !== ""
                             source: PackageManager.getIconPath(cardRect.modelData.icon || cardRect.modelData.id || "", cardRect.modelData.backend || "")
-
-                            layer.enabled: true
-                            layer.smooth: true
-                            layer.samples: 4
-                            layer.effect: Mask {
-                                maskSource: updateCookieShapeWrapper
-                            }
                         }
 
                         MaterialIcon {
@@ -219,11 +222,23 @@ PageBase {
                         }
 
                         StyledText {
-                            text: qsTr("Update available")
+                            text: cardRect.modelData.version ? (qsTr("Update to ") + cardRect.modelData.version) : qsTr("Update available")
                             font: Tokens.font.body.small
                             color: Colours.palette.m3onSurfaceVariant
                             Layout.alignment: Qt.AlignLeft
                             Layout.fillWidth: true
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    IconTextButton {
+                        icon: "system_update_alt"
+                        text: qsTr("Update")
+                        type: ButtonBase.Tonal
+                        enabled: !PackageManager.isBusy
+                        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                        onClicked: {
+                            PackageManager.installPackage(cardRect.modelData.backend, cardRect.modelData.id, cardRect.modelData.scope || "user");
                         }
                     }
 

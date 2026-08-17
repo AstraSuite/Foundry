@@ -201,15 +201,27 @@ public:
 };
 
 #include "cli/clihandler.hpp"
+#include "tray/traymanager.hpp"
+#include <QApplication>
+#include <QQmlContext>
+#include <QQuickWindow>
+#include <QLocalServer>
+#include <QLocalSocket>
 
 int main(int argc, char* argv[]) {
     qputenv("QML_XHR_ALLOW_FILE_READ", "1");
     bool launchGui = false;
+    bool launchTray = false;
 
     for (int i = 1; i < argc; ++i) {
         QString arg = QString::fromUtf8(argv[i]);
         if (arg == QStringLiteral("--gui") || arg == QStringLiteral("-g") || arg == QStringLiteral("gui")) {
             launchGui = true;
+            continue;
+        }
+        if (arg == QStringLiteral("--tray") || arg == QStringLiteral("-t") || arg == QStringLiteral("tray")) {
+            launchGui = true;
+            launchTray = true;
             continue;
         }
         if (arg.endsWith(QLatin1String(".AppImage"), Qt::CaseInsensitive) ||
@@ -224,6 +236,25 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    const QString userName = qgetenv("USER").isEmpty() ? QStringLiteral("default") : QString::fromLocal8Bit(qgetenv("USER"));
+    const QString serverName = QStringLiteral("astra-market-single-instance-") + userName;
+
+    if (launchGui) {
+        QLocalSocket socket;
+        socket.connectToServer(serverName);
+        if (socket.waitForConnected(500)) {
+            // Already running! Signal primary instance to unhide window
+            if (launchTray) {
+                socket.write("TRAY\n");
+            } else {
+                socket.write("SHOW\n");
+            }
+            socket.flush();
+            socket.waitForBytesWritten(1000);
+            return 0;
+        }
+    }
+
     QSurfaceFormat format;
     format.setRedBufferSize(8);
     format.setGreenBufferSize(8);
@@ -233,11 +264,16 @@ int main(int argc, char* argv[]) {
     format.setStencilBufferSize(8);
     QSurfaceFormat::setDefaultFormat(format);
 
-    QGuiApplication app(argc, argv);
+#ifndef ASTRA_VERSION
+#define ASTRA_VERSION "1.1.0"
+#endif
+
+    QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("astra"));
     app.setOrganizationName(QStringLiteral("AstraMarket"));
     app.setDesktopFileName(QStringLiteral("astra"));
-    app.setApplicationVersion(QStringLiteral("1.0.4"));
+    app.setApplicationVersion(QStringLiteral(ASTRA_VERSION));
+    app.setQuitOnLastWindowClosed(false);
 
     if (!launchGui) {
         PackageManager pm;
@@ -256,14 +292,19 @@ int main(int argc, char* argv[]) {
         QFontDatabase::addApplicationFont(QStringLiteral("assets/fonts/GoogleSansFlex-VariableFont_GRAD,ROND,opsz,slnt,wdth,wght.ttf"));
     }
 
+    PackageManager* sharedPm = new PackageManager(&app);
+    TrayManager::instance()->setPackageManager(sharedPm);
+
     qmlRegisterSingletonType<ThemeWatcher>("AstraMarket.Theme", 1, 0, "ThemeWatcher", &ThemeWatcher::create);
+
+    qmlRegisterSingletonType<TrayManager>("AstraMarket.Tray", 1, 0, "TrayManager", &TrayManager::create);
 
     qmlRegisterSingletonType<AppImageInstaller>("AstraMarket.Market", 1, 0, "AppImageInstaller", [](QQmlEngine*, QJSEngine*) -> QObject* {
         return new AppImageInstaller();
     });
 
-    qmlRegisterSingletonType<PackageManager>("AstraMarket.Market", 1, 0, "PackageManager", [](QQmlEngine*, QJSEngine*) -> QObject* {
-        return new PackageManager();
+    qmlRegisterSingletonType<PackageManager>("AstraMarket.Market", 1, 0, "PackageManager", [sharedPm](QQmlEngine*, QJSEngine*) -> QObject* {
+        return sharedPm;
     });
 
     const char* configUris[] = { "AstraMarket.Config", "Caelestia.Config" };
@@ -341,6 +382,52 @@ int main(int argc, char* argv[]) {
             QCoreApplication::exit(-1);
     }, Qt::QueuedConnection);
 
+    QObject::connect(TrayManager::instance(), &TrayManager::requestShowMainWindow, [&engine]() {
+        const auto rootObjects = engine.rootObjects();
+        for (auto* obj : rootObjects) {
+            if (auto* window = qobject_cast<QQuickWindow*>(obj)) {
+                window->setVisible(true);
+                window->show();
+                window->raise();
+                window->requestActivate();
+            }
+        }
+    });
+
+    QObject::connect(TrayManager::instance(), &TrayManager::requestToggleMainWindow, [&engine]() {
+        const auto rootObjects = engine.rootObjects();
+        for (auto* obj : rootObjects) {
+            if (auto* window = qobject_cast<QQuickWindow*>(obj)) {
+                if (window->isVisible()) {
+                    window->setVisible(false);
+                } else {
+                    window->setVisible(true);
+                    window->show();
+                    window->raise();
+                    window->requestActivate();
+                }
+            }
+        }
+    });
+
+    QLocalServer::removeServer(serverName);
+    auto* ipcServer = new QLocalServer(&app);
+    QObject::connect(ipcServer, &QLocalServer::newConnection, [ipcServer]() {
+        while (QLocalSocket* client = ipcServer->nextPendingConnection()) {
+            QObject::connect(client, &QLocalSocket::readyRead, [client]() {
+                const QByteArray cmd = client->readAll().trimmed();
+                if (cmd == "SHOW" || cmd == "OPEN_GUI") {
+                    TrayManager::instance()->showMainWindow();
+                } else if (cmd == "TOGGLE") {
+                    TrayManager::instance()->toggleMainWindow();
+                }
+            });
+        }
+    });
+    ipcServer->listen(serverName);
+
+    engine.rootContext()->setContextProperty(QStringLiteral("startInTray"), launchTray);
+    engine.rootContext()->setContextProperty(QStringLiteral("appVersion"), QStringLiteral(ASTRA_VERSION));
     engine.load(url);
 
     return app.exec();

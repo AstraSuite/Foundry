@@ -61,6 +61,7 @@ PageBase {
         spacing: Tokens.spacing.extraSmall / 2
 
         RowLayout {
+            width: root.width
             spacing: Tokens.spacing.extraSmall
 
             StyledText {
@@ -76,6 +77,16 @@ PageBase {
                 padding: 2
                 Layout.alignment: Qt.AlignVCenter
                 onClicked: root.refreshList()
+            }
+
+            Item { Layout.fillWidth: true }
+
+            IconTextButton {
+                icon: "terminal"
+                text: qsTr("Logs")
+                type: ButtonBase.Tonal
+                Layout.alignment: Qt.AlignVCenter
+                onClicked: root.nState.openSubPage(2)
             }
         }
 
