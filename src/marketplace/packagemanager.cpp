@@ -17,11 +17,19 @@ PackageManager* PackageManager::create(QQmlEngine*, QJSEngine*) {
     return new PackageManager();
 }
 
+#include <QSettings>
+
 void PackageManager::initPlugins() {
     m_flatpakPlugin = new FlatpakPlugin(this);
     m_pacmanPlugin = new PacmanPlugin(this);
     m_aurPlugin = new AurPlugin(this);
     m_appimagePlugin = new AppImagePlugin(this);
+
+    QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+    m_flatpakPlugin->setEnabled(settings.value(QStringLiteral("plugins/flatpak"), true).toBool());
+    m_pacmanPlugin->setEnabled(settings.value(QStringLiteral("plugins/pacman"), true).toBool());
+    m_aurPlugin->setEnabled(settings.value(QStringLiteral("plugins/aur"), true).toBool());
+    m_appimagePlugin->setEnabled(settings.value(QStringLiteral("plugins/appimage"), true).toBool());
 
     registerPlugin(m_flatpakPlugin);
     registerPlugin(m_pacmanPlugin);
@@ -88,10 +96,34 @@ bool PackageManager::isPacmanAvailable() const { return m_pacmanPlugin ? m_pacma
 bool PackageManager::isAurAvailable() const { return m_aurPlugin ? m_aurPlugin->isAvailable() : false; }
 bool PackageManager::isAppImageAvailable() const { return m_appimagePlugin ? m_appimagePlugin->isAvailable() : false; }
 
-void PackageManager::setEnableFlatpak(bool enable) { if (m_flatpakPlugin) m_flatpakPlugin->setEnabled(enable); }
-void PackageManager::setEnablePacman(bool enable) { if (m_pacmanPlugin) m_pacmanPlugin->setEnabled(enable); }
-void PackageManager::setEnableAur(bool enable) { if (m_aurPlugin) m_aurPlugin->setEnabled(enable); }
-void PackageManager::setEnableAppImage(bool enable) { if (m_appimagePlugin) m_appimagePlugin->setEnabled(enable); }
+void PackageManager::setEnableFlatpak(bool enable) {
+    if (m_flatpakPlugin) {
+        m_flatpakPlugin->setEnabled(enable);
+        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        settings.setValue(QStringLiteral("plugins/flatpak"), enable);
+    }
+}
+void PackageManager::setEnablePacman(bool enable) {
+    if (m_pacmanPlugin) {
+        m_pacmanPlugin->setEnabled(enable);
+        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        settings.setValue(QStringLiteral("plugins/pacman"), enable);
+    }
+}
+void PackageManager::setEnableAur(bool enable) {
+    if (m_aurPlugin) {
+        m_aurPlugin->setEnabled(enable);
+        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        settings.setValue(QStringLiteral("plugins/aur"), enable);
+    }
+}
+void PackageManager::setEnableAppImage(bool enable) {
+    if (m_appimagePlugin) {
+        m_appimagePlugin->setEnabled(enable);
+        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        settings.setValue(QStringLiteral("plugins/appimage"), enable);
+    }
+}
 void PackageManager::setAurHelper(const QString& helper) { if (m_aurPlugin) m_aurPlugin->setAurHelper(helper); }
 
 void PackageManager::setBusy(bool busy) {

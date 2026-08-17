@@ -190,7 +190,7 @@ bool RootConfig::recentlySaved() const {
     return m_recentlySaved;
 }
 
-void RootConfig::setupFileBackend(const QString& path, const QString& screen) {
+void RootConfig::setupFileBackend(const QString& path, const QString& screen, bool autoSave) {
     m_filePath = path;
     m_screen = screen;
 
@@ -254,7 +254,9 @@ void RootConfig::setupFileBackend(const QString& path, const QString& screen) {
     m_reloadDebounce->setInterval(50);
     connect(m_reloadDebounce, &QTimer::timeout, this, &RootConfig::reload);
 
-    connectAutoSave(this);
+    if (autoSave) {
+        connectAutoSave(this);
+    }
 
     connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, &RootConfig::onWatcherEvent);
     connect(m_watcher, &QFileSystemWatcher::fileChanged, this, &RootConfig::onWatcherEvent);

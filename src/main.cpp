@@ -237,7 +237,7 @@ int main(int argc, char* argv[]) {
     app.setApplicationName(QStringLiteral("astra"));
     app.setOrganizationName(QStringLiteral("AstraMarket"));
     app.setDesktopFileName(QStringLiteral("astra"));
-    app.setApplicationVersion(QStringLiteral("1.0.2"));
+    app.setApplicationVersion(QStringLiteral("1.0.3"));
 
     if (!launchGui) {
         PackageManager pm;

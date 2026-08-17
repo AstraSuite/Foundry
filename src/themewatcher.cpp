@@ -7,10 +7,15 @@
 #include <QJsonObject>
 #include <QProcess>
 #include <QStandardPaths>
+#include <QSettings>
 #include <QDebug>
 
 ThemeWatcher::ThemeWatcher(QObject* parent)
     : QObject(parent) {
+    QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+    m_syncScheme = settings.value(QStringLiteral("theme/syncScheme"), true).toBool();
+    m_syncTokens = settings.value(QStringLiteral("theme/syncTokens"), true).toBool();
+
     const QString filePath = getSchemeFilePath();
     const QFileInfo fi(filePath);
     if (!fi.dir().exists()) {
@@ -44,6 +49,8 @@ ThemeWatcher::ThemeWatcher(QObject* parent)
 void ThemeWatcher::setSyncScheme(bool sync) {
     if (m_syncScheme != sync) {
         m_syncScheme = sync;
+        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        settings.setValue(QStringLiteral("theme/syncScheme"), sync);
         emit syncSchemeChanged();
         reload();
     }
@@ -52,6 +59,8 @@ void ThemeWatcher::setSyncScheme(bool sync) {
 void ThemeWatcher::setSyncTokens(bool sync) {
     if (m_syncTokens != sync) {
         m_syncTokens = sync;
+        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        settings.setValue(QStringLiteral("theme/syncTokens"), sync);
         emit syncTokensChanged();
         reload();
     }

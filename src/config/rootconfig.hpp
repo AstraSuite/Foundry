@@ -14,7 +14,7 @@ class RootConfig : public ConfigObject {
 public:
     explicit RootConfig(QObject* parent = nullptr);
 
-    void setupFileBackend(const QString& path, const QString& screen = {});
+    void setupFileBackend(const QString& path, const QString& screen = {}, bool autoSave = false);
     [[nodiscard]] QString filePath() const { return m_filePath; }
     void saveToFile();
 
