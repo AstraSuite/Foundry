@@ -9,19 +9,34 @@ AstraMarket is a unified package manager providing both a graphical interface an
 - C++20 compiler
 - Supported package managers: Flatpak, Pacman, paru/yay (optional for AUR)
 
-## Building
+## Installation
+
+### Arch Linux / AUR
+
+AstraMarket is available on the [AUR](https://aur.archlinux.org):
+
+```bash
+# Release (builds from source)
+paru -S astramarket
+# or yay -S astramarket
+
+# Precompiled binary (fast install)
+paru -S astramarket-bin
+# or yay -S astramarket-bin
+
+# Latest git development
+paru -S astramarket-git
+# or yay -S astramarket-git
+```
+
+### Manual Installation (From Source)
+
+Build and install AstraMarket system-wide:
 
 ```bash
 mkdir -p build
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-```
-
-## Installation
-
-Install AstraMarket system-wide (requires root privileges):
-
-```bash
 sudo cmake --install build
 ```
 
