@@ -2,7 +2,7 @@
 Name=Astra Market
 GenericName=Package Manager
 Comment=Unified graphical and command-line package manager
-Exec=astra %F
+Exec=astra --gui %F
 Icon=AstraMarket
 Terminal=false
 Type=Application
@@ -10,4 +10,3 @@ Categories=System;PackageManager;Utility;
 Keywords=package;install;flatpak;pacman;aur;appimage;store;market;
 StartupWMClass=astra
 MimeType=application/vnd.appimage;application/x-iso9660-appimage;application/x-appimage;
-
