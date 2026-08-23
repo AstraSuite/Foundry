@@ -40,6 +40,29 @@ QString withoutProgressBar(QString line) {
 }
 }
 
+QString FlatpakPlugin::scopeArgument(const QString& scope) {
+    return scope == QStringLiteral("system") ? QStringLiteral("--system") : QStringLiteral("--user");
+}
+
+QString FlatpakPlugin::resolveScope(const QString& packageId, const QVariantMap& options) {
+    const QString requested = options.value(QStringLiteral("scope")).toString();
+    if (requested == QStringLiteral("user") || requested == QStringLiteral("system")) return requested;
+
+    const QStringList scopes{QStringLiteral("user"), QStringLiteral("system")};
+    for (const QString& scope : scopes) {
+        const astra::ProcessResult result = astra::runProcess(
+            QStringLiteral("flatpak"),
+            {QStringLiteral("list"), QStringLiteral("--columns=application"), scopeArgument(scope)},
+            kQueryTimeoutMs);
+
+        const QStringList lines = result.output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+        for (const QString& line : lines) {
+            if (line.trimmed().compare(packageId, Qt::CaseInsensitive) == 0) return scope;
+        }
+    }
+    return QStringLiteral("user");
+}
+
 QVariantList FlatpakPlugin::parseSearchOutput(const QString& output, QSet<QString>& seen) {
     QVariantList results;
     const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
@@ -284,11 +307,20 @@ QVariantList FlatpakPlugin::getUpdates() {
     QVariantList results;
     if (!isAvailable() || !m_enabled) return results;
 
-    const astra::ProcessResult result = astra::runProcess(
-        QStringLiteral("flatpak"),
-        {QStringLiteral("remote-ls"), QStringLiteral("--updates"), QStringLiteral("--columns=app,name,version")},
-        kQueryTimeoutMs);
-    results.append(parseUpdatesOutput(result.output));
+    const QStringList scopes{QStringLiteral("user"), QStringLiteral("system")};
+    for (const QString& scope : scopes) {
+        const astra::ProcessResult result = astra::runProcess(
+            QStringLiteral("flatpak"),
+            {QStringLiteral("remote-ls"), QStringLiteral("--updates"), QStringLiteral("--columns=app,name,version"), scopeArgument(scope)},
+            kQueryTimeoutMs);
+
+        const QVariantList updates = parseUpdatesOutput(result.output);
+        for (const QVariant& value : updates) {
+            QVariantMap item = value.toMap();
+            item[QStringLiteral("scope")] = scope;
+            results.append(item);
+        }
+    }
     return results;
 }
 
@@ -359,10 +391,9 @@ QVariantMap FlatpakPlugin::getDetails(const QString& packageId) {
 
 bool FlatpakPlugin::install(const QString& packageId, const QVariantMap& options, ProgressCallback progressCb) {
     if (!isAvailable()) return false;
-    QString scope = options.value(QStringLiteral("scope"), QStringLiteral("user")).toString();
     QStringList args;
     args << QStringLiteral("install")
-         << (scope == QStringLiteral("system") ? QStringLiteral("--system") : QStringLiteral("--user"))
+         << scopeArgument(options.value(QStringLiteral("scope")).toString())
          << QStringLiteral("-y")
          << packageId;
 
@@ -377,10 +408,31 @@ bool FlatpakPlugin::install(const QString& packageId, const QVariantMap& options
 }
 
 bool FlatpakPlugin::uninstall(const QString& packageId, const QVariantMap& options, ProgressCallback progressCb) {
-    Q_UNUSED(options);
     if (!isAvailable()) return false;
     QStringList args;
-    args << QStringLiteral("uninstall") << QStringLiteral("-y") << packageId;
+    args << QStringLiteral("uninstall")
+         << scopeArgument(resolveScope(packageId, options))
+         << QStringLiteral("-y")
+         << packageId;
+
+    const astra::ProcessResult result = astra::runProcessStreaming(QStringLiteral("flatpak"), args, [&progressCb](const QString& line) {
+        if (!progressCb) return;
+        const QString message = withoutProgressBar(line);
+        if (message.isEmpty()) return;
+        const int percent = percentFromLine(line);
+        progressCb(percent < 0 ? 50 : percent, message);
+    });
+    return result.succeeded();
+}
+
+bool FlatpakPlugin::update(const QString& packageId, const QVariantMap& options, ProgressCallback progressCb) {
+    if (!isAvailable()) return false;
+
+    QStringList args;
+    args << QStringLiteral("update")
+         << scopeArgument(resolveScope(packageId, options))
+         << QStringLiteral("-y")
+         << packageId;
 
     const astra::ProcessResult result = astra::runProcessStreaming(QStringLiteral("flatpak"), args, [&progressCb](const QString& line) {
         if (!progressCb) return;

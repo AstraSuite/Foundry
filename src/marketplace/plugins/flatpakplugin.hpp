@@ -25,15 +25,19 @@ public:
 
     bool install(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) override;
     bool uninstall(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) override;
+    bool update(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) override;
     bool launch(const QString& packageId) override;
 
     QList<QVariantMap> getInstallSources(const QString& packageId) override;
 
+    static QString scopeArgument(const QString& scope);
     static QVariantList parseSearchOutput(const QString& output, QSet<QString>& seen);
     static QVariantList parseInstalledOutput(const QString& output, const QString& scope);
     static QVariantList parseUpdatesOutput(const QString& output);
 
 private:
+    QString resolveScope(const QString& packageId, const QVariantMap& options);
+
     bool m_enabled{true};
     QSettings m_settings{QStringLiteral("AstraMarket"), QStringLiteral("Plugins")};
 };

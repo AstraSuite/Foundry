@@ -25,6 +25,7 @@ public:
 
     bool install(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) override;
     bool uninstall(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) override;
+    bool update(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) override;
     bool launch(const QString& packageId) override;
 
     static QVariantList parseSearchOutput(const QString& output);

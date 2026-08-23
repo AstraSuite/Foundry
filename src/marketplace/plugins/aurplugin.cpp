@@ -222,6 +222,20 @@ bool AurPlugin::uninstall(const QString& packageId, const QVariantMap& options, 
     return result.succeeded();
 }
 
+bool AurPlugin::update(const QString& packageId, const QVariantMap& options, ProgressCallback progressCb) {
+    Q_UNUSED(options);
+    const QString helper = resolveHelper();
+    if (helper.isEmpty()) return false;
+
+    const astra::ProcessResult result = astra::runProcessStreaming(
+        helper,
+        {QStringLiteral("-Syu"), QStringLiteral("--noconfirm"), packageId},
+        [&progressCb](const QString& line) {
+            if (progressCb) progressCb(50, line);
+        });
+    return result.succeeded();
+}
+
 bool AurPlugin::launch(const QString& packageId) {
     return QProcess::startDetached(packageId);
 }

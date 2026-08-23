@@ -278,10 +278,13 @@ int CliHandler::handleInstall(const QStringList& args, PackageManager& pm) {
 int CliHandler::handleUninstall(const QStringList& args, PackageManager& pm) {
     QString packageId;
     QString source;
+    QString scope;
 
     for (int i = 0; i < args.size(); ++i) {
         if ((args[i] == QStringLiteral("-s") || args[i] == QStringLiteral("--source")) && i + 1 < args.size()) {
             source = args[++i];
+        } else if (args[i] == QStringLiteral("--scope") && i + 1 < args.size()) {
+            scope = args[++i];
         } else if (packageId.isEmpty()) {
             packageId = args[i];
         }
@@ -289,7 +292,7 @@ int CliHandler::handleUninstall(const QStringList& args, PackageManager& pm) {
 
     if (packageId.isEmpty()) {
         std::cerr << ANSI_RED "Error: Package ID required." ANSI_RESET "\n";
-        std::cout << "Usage: astra remove <package-id> [--source <source>]\n";
+        std::cout << "Usage: astra remove <package-id> [--source <source>] [--scope user|system]\n";
         return 1;
     }
 
@@ -309,7 +312,10 @@ int CliHandler::handleUninstall(const QStringList& args, PackageManager& pm) {
 
     std::cout << ANSI_BOLD "Uninstalling " ANSI_CYAN << packageId.toStdString() << ANSI_RESET "...\n";
 
-    bool ok = plugin->uninstall(packageId, {}, [](int pct, const QString& status) {
+    QVariantMap options;
+    if (!scope.isEmpty()) options[QStringLiteral("scope")] = scope;
+
+    bool ok = plugin->uninstall(packageId, options, [](int pct, const QString& status) {
         Q_UNUSED(pct);
         if (!status.isEmpty()) {
             std::cout << ANSI_DIM << "  " << status.toStdString() << ANSI_RESET << "\n";
