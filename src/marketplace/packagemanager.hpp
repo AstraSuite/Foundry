@@ -6,6 +6,7 @@
 #include <QVariantMap>
 #include <QProcess>
 #include <QQmlEngine>
+#include <QThreadPool>
 #include <QJSEngine>
 #include <qqmlintegration.h>
 #include <QList>
@@ -125,6 +126,8 @@ private:
     AurPlugin* m_aurPlugin{nullptr};
     AppImagePlugin* m_appimagePlugin{nullptr};
     QList<IPackagePlugin*> m_plugins;
+
+    QThreadPool m_pluginPool;
 
     quint64 m_searchSequence{0};
     quint64 m_installedSequence{0};
