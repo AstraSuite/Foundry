@@ -208,6 +208,10 @@ public:
 #include <QLocalServer>
 #include <QLocalSocket>
 
+#ifndef ASTRA_VERSION
+#define ASTRA_VERSION "1.1.0"
+#endif
+
 int main(int argc, char* argv[]) {
     qputenv("QML_XHR_ALLOW_FILE_READ", "1");
     bool launchGui = false;
@@ -255,6 +259,16 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    if (!launchGui) {
+        QCoreApplication app(argc, argv);
+        app.setApplicationName(QStringLiteral("astra"));
+        app.setOrganizationName(QStringLiteral("AstraMarket"));
+        app.setApplicationVersion(QStringLiteral(ASTRA_VERSION));
+
+        PackageManager pm;
+        return CliHandler::run(argc, argv, pm);
+    }
+
     QSurfaceFormat format;
     format.setRedBufferSize(8);
     format.setGreenBufferSize(8);
@@ -264,21 +278,12 @@ int main(int argc, char* argv[]) {
     format.setStencilBufferSize(8);
     QSurfaceFormat::setDefaultFormat(format);
 
-#ifndef ASTRA_VERSION
-#define ASTRA_VERSION "1.1.0"
-#endif
-
     QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("astra"));
     app.setOrganizationName(QStringLiteral("AstraMarket"));
     app.setDesktopFileName(QStringLiteral("astra"));
     app.setApplicationVersion(QStringLiteral(ASTRA_VERSION));
     app.setQuitOnLastWindowClosed(false);
-
-    if (!launchGui) {
-        PackageManager pm;
-        return CliHandler::run(argc, argv, pm);
-    }
 
     const QString iconPath = QStringLiteral(":/assets/icons/AstraMarket.svg");
     if (QFile::exists(iconPath)) {
