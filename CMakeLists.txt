@@ -92,6 +92,38 @@ qt_add_resources(astra "qml_resources"
     FILES ${QML_FILES}
 )
 
+option(ASTRA_BUILD_TESTS "Build the AstraMarket unit tests" OFF)
+
+if(ASTRA_BUILD_TESTS)
+    enable_testing()
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+
+    qt_add_executable(tst_parsers
+        tests/tst_parsers.cpp
+        src/marketplace/pluginprocess.cpp
+        src/marketplace/pluginprocess.hpp
+        src/marketplace/plugins/packageplugin.hpp
+        src/marketplace/plugins/pacmanplugin.cpp
+        src/marketplace/plugins/pacmanplugin.hpp
+        src/marketplace/plugins/flatpakplugin.cpp
+        src/marketplace/plugins/flatpakplugin.hpp
+    )
+
+    target_include_directories(tst_parsers PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/marketplace
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/marketplace/plugins
+    )
+
+    target_link_libraries(tst_parsers PRIVATE
+        Qt6::Core
+        Qt6::Network
+        Qt6::Test
+    )
+
+    add_test(NAME parsers COMMAND tst_parsers)
+endif()
+
 # Installation
 include(GNUInstallDirs)
 

@@ -1,7 +1,9 @@
 #include "aurplugin.hpp"
+#include "pluginprocess.hpp"
 #include <QProcess>
 #include <QFile>
 #include <QSet>
+#include <QStandardPaths>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -10,6 +12,12 @@
 #include <QNetworkReply>
 #include <QEventLoop>
 #include <QUrl>
+
+namespace {
+constexpr int kQueryTimeoutMs = 15000;
+constexpr int kUpdatesTimeoutMs = 30000;
+constexpr int kNetworkTimeoutMs = 10000;
+}
 
 AurPlugin::AurPlugin(QObject* parent) : IPackagePlugin(parent) {
     m_enabled = m_settings.value(QStringLiteral("AUR/enabled"), true).toBool();
@@ -22,10 +30,11 @@ bool AurPlugin::isAvailable() const {
 
 QString AurPlugin::resolveHelper() const {
     if (!m_aurHelper.isEmpty() && m_aurHelper != QStringLiteral("auto")) {
-        if (QFile::exists(QStringLiteral("/usr/bin/") + m_aurHelper)) return m_aurHelper;
+        if (!QStandardPaths::findExecutable(m_aurHelper).isEmpty()) return m_aurHelper;
     }
-    if (QFile::exists(QStringLiteral("/usr/bin/paru"))) return QStringLiteral("paru");
-    if (QFile::exists(QStringLiteral("/usr/bin/yay"))) return QStringLiteral("yay");
+    for (const QString& candidate : {QStringLiteral("paru"), QStringLiteral("yay")}) {
+        if (!QStandardPaths::findExecutable(candidate).isEmpty()) return candidate;
+    }
     return QString();
 }
 
@@ -57,6 +66,7 @@ QVariantList AurPlugin::search(const QString& query, const QVariantMap& options)
     QUrl url(QStringLiteral("https://aur.archlinux.org/rpc/v5/search/") + QUrl::toPercentEncoding(q));
     QNetworkRequest req(url);
     req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+    req.setTransferTimeout(kNetworkTimeoutMs);
 
     QEventLoop loop;
     QNetworkReply* reply = nam.get(req);
@@ -89,31 +99,54 @@ QVariantList AurPlugin::search(const QString& query, const QVariantMap& options)
     return results;
 }
 
+QVariantList AurPlugin::parseForeignOutput(const QString& output) {
+    QVariantList results;
+    const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+
+    for (const QString& line : lines) {
+        const QStringList parts = line.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+        if (parts.size() < 2) continue;
+
+        QVariantMap item;
+        item[QStringLiteral("id")] = parts.value(0);
+        item[QStringLiteral("name")] = parts.value(0);
+        item[QStringLiteral("version")] = parts.value(1);
+        item[QStringLiteral("backend")] = QStringLiteral("AUR");
+        item[QStringLiteral("repository")] = QStringLiteral("local");
+        item[QStringLiteral("scope")] = QStringLiteral("system");
+        item[QStringLiteral("icon")] = parts.value(0);
+        item[QStringLiteral("isInstalled")] = true;
+        results.append(item);
+    }
+    return results;
+}
+
+QVariantList AurPlugin::parseUpdatesOutput(const QString& output) {
+    QVariantList results;
+    const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+
+    for (const QString& line : lines) {
+        const QStringList parts = line.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+        if (parts.size() < 4) continue;
+
+        QVariantMap item;
+        item[QStringLiteral("id")] = parts.value(0);
+        item[QStringLiteral("name")] = parts.value(0);
+        item[QStringLiteral("version")] = parts.value(1) + QStringLiteral(" -> ") + parts.value(3);
+        item[QStringLiteral("backend")] = QStringLiteral("AUR");
+        item[QStringLiteral("scope")] = QStringLiteral("system");
+        item[QStringLiteral("icon")] = parts.value(0);
+        results.append(item);
+    }
+    return results;
+}
+
 QVariantList AurPlugin::getInstalled() {
     QVariantList results;
     if (!m_enabled) return results;
 
-    QProcess qmProc;
-    qmProc.start(QStringLiteral("pacman"), {QStringLiteral("-Qm")});
-    if (qmProc.waitForFinished(3000)) {
-        QString output = QString::fromUtf8(qmProc.readAllStandardOutput()).trimmed();
-        QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-        for (const QString& line : lines) {
-            QStringList parts = line.split(QLatin1Char(' '), Qt::SkipEmptyParts);
-            if (parts.size() >= 2) {
-                QVariantMap item;
-                item[QStringLiteral("id")] = parts.value(0);
-                item[QStringLiteral("name")] = parts.value(0);
-                item[QStringLiteral("version")] = parts.value(1);
-                item[QStringLiteral("backend")] = QStringLiteral("AUR");
-                item[QStringLiteral("repository")] = QStringLiteral("local");
-                item[QStringLiteral("scope")] = QStringLiteral("system");
-                item[QStringLiteral("icon")] = parts.value(0);
-                item[QStringLiteral("isInstalled")] = true;
-                results.append(item);
-            }
-        }
-    }
+    const astra::ProcessResult result = astra::runProcess(QStringLiteral("pacman"), {QStringLiteral("-Qm")}, kQueryTimeoutMs);
+    results.append(parseForeignOutput(result.output));
     return results;
 }
 
@@ -124,25 +157,8 @@ QVariantList AurPlugin::getUpdates() {
     QString helper = resolveHelper();
     if (helper.isEmpty()) return results;
 
-    QProcess proc;
-    proc.start(helper, {QStringLiteral("-Qua")});
-    if (proc.waitForFinished(8000)) {
-        QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-        QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-        for (const QString& line : lines) {
-            QStringList parts = line.split(QLatin1Char(' '), Qt::SkipEmptyParts);
-            if (parts.size() >= 4) {
-                QVariantMap item;
-                item[QStringLiteral("id")] = parts.value(0);
-                item[QStringLiteral("name")] = parts.value(0);
-                item[QStringLiteral("version")] = parts.value(1) + QStringLiteral(" -> ") + parts.value(3);
-                item[QStringLiteral("backend")] = QStringLiteral("AUR");
-                item[QStringLiteral("scope")] = QStringLiteral("system");
-                item[QStringLiteral("icon")] = parts.value(0);
-                results.append(item);
-            }
-        }
-    }
+    const astra::ProcessResult result = astra::runProcess(helper, {QStringLiteral("-Qua")}, kUpdatesTimeoutMs);
+    results.append(parseUpdatesOutput(result.output));
     return results;
 }
 
@@ -156,6 +172,7 @@ QVariantMap AurPlugin::getDetails(const QString& packageId) {
     QUrl url(QStringLiteral("https://aur.archlinux.org/rpc/v5/info/") + QUrl::toPercentEncoding(packageId));
     QNetworkRequest req(url);
     req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+    req.setTransferTimeout(kNetworkTimeoutMs);
 
     QEventLoop loop;
     QNetworkReply* reply = nam.get(req);
@@ -191,50 +208,18 @@ bool AurPlugin::install(const QString& packageId, const QVariantMap& options, Pr
     QString helper = resolveHelper();
     if (helper.isEmpty()) return false;
 
-    QProcess proc;
-    proc.setProcessChannelMode(QProcess::MergedChannels);
-    proc.start(helper, {QStringLiteral("-S"), QStringLiteral("--noconfirm"), packageId});
-    if (!proc.waitForStarted(5000)) return false;
-
-    while (proc.state() == QProcess::Running) {
-        if (proc.waitForReadyRead(200)) {
-            while (proc.canReadLine()) {
-                QString line = QString::fromUtf8(proc.readLine()).trimmed();
-                if (!line.isEmpty() && progressCb) progressCb(50, line);
-            }
-        }
-    }
-    QString rest = QString::fromUtf8(proc.readAll()).trimmed();
-    if (!rest.isEmpty() && progressCb) {
-        for (const QString& line : rest.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
-            progressCb(100, line.trimmed());
-        }
-    }
-    return proc.exitCode() == 0;
+    const astra::ProcessResult result = astra::runProcessStreaming(helper, {QStringLiteral("-S"), QStringLiteral("--noconfirm"), packageId}, [&progressCb](const QString& line) {
+        if (progressCb) progressCb(50, line);
+    });
+    return result.succeeded();
 }
 
 bool AurPlugin::uninstall(const QString& packageId, const QVariantMap& options, ProgressCallback progressCb) {
     Q_UNUSED(options);
-    QProcess proc;
-    proc.setProcessChannelMode(QProcess::MergedChannels);
-    proc.start(QStringLiteral("pkexec"), {QStringLiteral("pacman"), QStringLiteral("-Rns"), QStringLiteral("--noconfirm"), packageId});
-    if (!proc.waitForStarted(5000)) return false;
-
-    while (proc.state() == QProcess::Running) {
-        if (proc.waitForReadyRead(200)) {
-            while (proc.canReadLine()) {
-                QString line = QString::fromUtf8(proc.readLine()).trimmed();
-                if (!line.isEmpty() && progressCb) progressCb(50, line);
-            }
-        }
-    }
-    QString rest = QString::fromUtf8(proc.readAll()).trimmed();
-    if (!rest.isEmpty() && progressCb) {
-        for (const QString& line : rest.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
-            progressCb(100, line.trimmed());
-        }
-    }
-    return proc.exitCode() == 0;
+    const astra::ProcessResult result = astra::runProcessStreaming(QStringLiteral("pkexec"), {QStringLiteral("pacman"), QStringLiteral("-Rns"), QStringLiteral("--noconfirm"), packageId}, [&progressCb](const QString& line) {
+        if (progressCb) progressCb(50, line);
+    });
+    return result.succeeded();
 }
 
 bool AurPlugin::launch(const QString& packageId) {

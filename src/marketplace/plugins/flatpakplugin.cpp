@@ -1,7 +1,10 @@
 #include "flatpakplugin.hpp"
+#include "pluginprocess.hpp"
 #include <QProcess>
 #include <QFile>
+#include <QRegularExpression>
 #include <QSet>
+#include <QStandardPaths>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -16,7 +19,99 @@ FlatpakPlugin::FlatpakPlugin(QObject* parent) : IPackagePlugin(parent) {
 }
 
 bool FlatpakPlugin::isAvailable() const {
-    return QFile::exists(QStringLiteral("/usr/bin/flatpak")) || QFile::exists(QStringLiteral("/bin/flatpak"));
+    return !QStandardPaths::findExecutable(QStringLiteral("flatpak")).isEmpty();
+}
+
+namespace {
+constexpr int kQueryTimeoutMs = 15000;
+constexpr int kSearchTimeoutMs = 5000;
+constexpr int kDetailsTimeoutMs = 10000;
+
+int percentFromLine(const QString& line) {
+    static const QRegularExpression percentPattern(QStringLiteral(R"((\d{1,3})%)"));
+    const QRegularExpressionMatch match = percentPattern.match(line);
+    return match.hasMatch() ? qBound(0, match.captured(1).toInt(), 100) : -1;
+}
+
+QString withoutProgressBar(QString line) {
+    static const QRegularExpression barPattern(QStringLiteral(R"([\x{2588}\x{2591}\x{2593}\x{2592}\-=|]{2,})"));
+    line.remove(barPattern);
+    return line.simplified();
+}
+}
+
+QVariantList FlatpakPlugin::parseSearchOutput(const QString& output, QSet<QString>& seen) {
+    QVariantList results;
+    const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+
+    for (const QString& line : lines) {
+        const QStringList parts = line.split(QLatin1Char('\t'), Qt::KeepEmptyParts);
+        if (parts.size() < 2) continue;
+
+        const QString appId = parts.value(0).trimmed();
+        if (appId.isEmpty() || seen.contains(appId)) continue;
+        seen.insert(appId);
+
+        QVariantMap item;
+        item[QStringLiteral("id")] = appId;
+        item[QStringLiteral("name")] = parts.value(1).trimmed();
+        item[QStringLiteral("summary")] = parts.size() > 2 ? parts.value(2).trimmed() : QString();
+        item[QStringLiteral("backend")] = QStringLiteral("Flatpak");
+        item[QStringLiteral("scope")] = QStringLiteral("user");
+        item[QStringLiteral("icon")] = appId;
+        results.append(item);
+    }
+    return results;
+}
+
+QVariantList FlatpakPlugin::parseInstalledOutput(const QString& output, const QString& scope) {
+    QVariantList results;
+    const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+
+    for (const QString& line : lines) {
+        const QStringList parts = line.split(QLatin1Char('\t'), Qt::KeepEmptyParts);
+        if (parts.size() < 2) continue;
+
+        const QString appId = parts.value(0).trimmed();
+        if (appId.isEmpty()) continue;
+
+        QVariantMap item;
+        item[QStringLiteral("id")] = appId;
+        item[QStringLiteral("name")] = parts.value(1).trimmed().isEmpty() ? appId : parts.value(1).trimmed();
+        const QString version = parts.value(2).trimmed();
+        item[QStringLiteral("version")] = version.isEmpty() ? QStringLiteral("latest") : version;
+        item[QStringLiteral("size")] = parts.value(3).trimmed();
+        item[QStringLiteral("backend")] = QStringLiteral("Flatpak");
+        item[QStringLiteral("scope")] = scope;
+        item[QStringLiteral("icon")] = appId;
+        item[QStringLiteral("isInstalled")] = true;
+        results.append(item);
+    }
+    return results;
+}
+
+QVariantList FlatpakPlugin::parseUpdatesOutput(const QString& output) {
+    QVariantList results;
+    const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+
+    for (const QString& line : lines) {
+        const QStringList parts = line.split(QLatin1Char('\t'), Qt::KeepEmptyParts);
+        if (parts.size() < 2) continue;
+
+        const QString appId = parts.value(0).trimmed();
+        if (appId.isEmpty()) continue;
+
+        QVariantMap item;
+        item[QStringLiteral("id")] = appId;
+        item[QStringLiteral("name")] = parts.value(1).trimmed().isEmpty() ? appId : parts.value(1).trimmed();
+        const QString version = parts.value(2).trimmed();
+        item[QStringLiteral("version")] = version.isEmpty() ? QStringLiteral("update") : version;
+        item[QStringLiteral("backend")] = QStringLiteral("Flatpak");
+        item[QStringLiteral("scope")] = QStringLiteral("user");
+        item[QStringLiteral("icon")] = appId;
+        results.append(item);
+    }
+    return results;
 }
 
 void FlatpakPlugin::setEnabled(bool enabled) {
@@ -83,7 +178,7 @@ QVariantList FlatpakPlugin::search(const QString& query, const QVariantMap& opti
             QUrl url(QStringLiteral("https://flathub.org/api/v2/collection/category/") + cat);
             QNetworkRequest req(url);
             req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
-            req.setTransferTimeout(2500);
+            req.setTransferTimeout(kSearchTimeoutMs);
 
             QEventLoop loop;
             QNetworkReply* reply = nam.get(req);
@@ -121,7 +216,7 @@ QVariantList FlatpakPlugin::search(const QString& query, const QVariantMap& opti
         QNetworkRequest req(url);
         req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
         req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
-        req.setTransferTimeout(2500);
+        req.setTransferTimeout(kSearchTimeoutMs);
 
         QJsonObject jsonBody;
         jsonBody[QStringLiteral("query")] = q;
@@ -157,35 +252,12 @@ QVariantList FlatpakPlugin::search(const QString& query, const QVariantMap& opti
         reply->deleteLater();
     }
 
-    // Local CLI flatpak search as fallback / supplemental
     if (results.size() < 10) {
-        QProcess proc;
-        proc.start(QStringLiteral("flatpak"), {QStringLiteral("search"), q.toLower(), QStringLiteral("--columns=app,name,description")});
-        if (proc.waitForFinished(3000)) {
-            QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-            QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-            for (const QString& line : lines) {
-                QStringList parts = line.split(QLatin1Char('\t'), Qt::KeepEmptyParts);
-                if (parts.size() >= 2) {
-                    QString appId = parts.value(0).trimmed();
-                    QString appName = parts.value(1).trimmed();
-                    if (appId.isEmpty() || seen.contains(appId)) continue;
-                    seen.insert(appId);
-
-                    QVariantMap item;
-                    item[QStringLiteral("id")] = appId;
-                    item[QStringLiteral("name")] = appName;
-                    item[QStringLiteral("summary")] = parts.size() > 2 ? parts.value(2).trimmed() : QStringLiteral("");
-                    item[QStringLiteral("backend")] = QStringLiteral("Flatpak");
-                    item[QStringLiteral("scope")] = QStringLiteral("user");
-                    item[QStringLiteral("icon")] = appId;
-                    results.append(item);
-                }
-            }
-        } else {
-            proc.kill();
-            proc.waitForFinished(300);
-        }
+        const astra::ProcessResult local = astra::runProcess(
+            QStringLiteral("flatpak"),
+            {QStringLiteral("search"), q.toLower(), QStringLiteral("--columns=app,name,description")},
+            kQueryTimeoutMs);
+        results.append(parseSearchOutput(local.output, seen));
     }
     return results;
 }
@@ -194,33 +266,13 @@ QVariantList FlatpakPlugin::getInstalled() {
     QVariantList results;
     if (!isAvailable() || !m_enabled) return results;
 
-    auto fetchScope = [](const QString& scope) -> QVariantList {
-        QVariantList list;
-        QProcess proc;
-        proc.start(QStringLiteral("flatpak"), {QStringLiteral("list"), QStringLiteral("--app"), QStringLiteral("--columns=app,name,version,size"), scope == QStringLiteral("user") ? QStringLiteral("--user") : QStringLiteral("--system")});
-        if (proc.waitForFinished(5000)) {
-            QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-            QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-            for (const QString& line : lines) {
-                QStringList parts = line.split(QLatin1Char('\t'), Qt::KeepEmptyParts);
-                if (parts.size() >= 2) {
-                    QVariantMap item;
-                    item[QStringLiteral("id")] = parts.value(0).trimmed();
-                    item[QStringLiteral("name")] = parts.value(1).trimmed().isEmpty() ? parts.value(0).trimmed() : parts.value(1).trimmed();
-                    item[QStringLiteral("version")] = parts.size() > 2 ? parts.value(2).trimmed() : QStringLiteral("latest");
-                    item[QStringLiteral("size")] = parts.size() > 3 ? parts.value(3).trimmed() : QStringLiteral("");
-                    item[QStringLiteral("backend")] = QStringLiteral("Flatpak");
-                    item[QStringLiteral("scope")] = scope;
-                    item[QStringLiteral("icon")] = parts.value(0).trimmed();
-                    item[QStringLiteral("isInstalled")] = true;
-                    list.append(item);
-                }
-            }
-        } else {
-            proc.kill();
-            proc.waitForFinished(500);
-        }
-        return list;
+    const auto fetchScope = [](const QString& scope) -> QVariantList {
+        const astra::ProcessResult result = astra::runProcess(
+            QStringLiteral("flatpak"),
+            {QStringLiteral("list"), QStringLiteral("--app"), QStringLiteral("--columns=app,name,version,size"),
+             scope == QStringLiteral("user") ? QStringLiteral("--user") : QStringLiteral("--system")},
+            kQueryTimeoutMs);
+        return parseInstalledOutput(result.output, scope);
     };
 
     results.append(fetchScope(QStringLiteral("user")));
@@ -232,28 +284,11 @@ QVariantList FlatpakPlugin::getUpdates() {
     QVariantList results;
     if (!isAvailable() || !m_enabled) return results;
 
-    QProcess proc;
-    proc.start(QStringLiteral("flatpak"), {QStringLiteral("remote-ls"), QStringLiteral("--updates"), QStringLiteral("--columns=app,name,version")});
-    if (proc.waitForFinished(8000)) {
-        QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-        QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-        for (const QString& line : lines) {
-            QStringList parts = line.split(QLatin1Char('\t'), Qt::KeepEmptyParts);
-            if (parts.size() >= 2) {
-                QVariantMap item;
-                item[QStringLiteral("id")] = parts.value(0).trimmed();
-                item[QStringLiteral("name")] = parts.value(1).trimmed();
-                item[QStringLiteral("version")] = parts.size() > 2 ? parts.value(2).trimmed() : QStringLiteral("update");
-                item[QStringLiteral("backend")] = QStringLiteral("Flatpak");
-                item[QStringLiteral("scope")] = QStringLiteral("user");
-                item[QStringLiteral("icon")] = parts.value(0).trimmed();
-                results.append(item);
-            }
-        }
-    } else {
-        proc.kill();
-        proc.waitForFinished(500);
-    }
+    const astra::ProcessResult result = astra::runProcess(
+        QStringLiteral("flatpak"),
+        {QStringLiteral("remote-ls"), QStringLiteral("--updates"), QStringLiteral("--columns=app,name,version")},
+        kQueryTimeoutMs);
+    results.append(parseUpdatesOutput(result.output));
     return results;
 }
 
@@ -276,6 +311,7 @@ QVariantMap FlatpakPlugin::getDetails(const QString& packageId) {
     QNetworkRequest req(url);
     req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    req.setTransferTimeout(kDetailsTimeoutMs);
 
     QEventLoop loop;
     QNetworkReply* reply = nam.get(req);
@@ -330,37 +366,14 @@ bool FlatpakPlugin::install(const QString& packageId, const QVariantMap& options
          << QStringLiteral("-y")
          << packageId;
 
-    QProcess proc;
-    proc.setProcessChannelMode(QProcess::MergedChannels);
-    proc.start(QStringLiteral("flatpak"), args);
-    if (!proc.waitForStarted(5000)) return false;
-
-    while (proc.state() == QProcess::Running) {
-        if (proc.waitForReadyRead(200)) {
-            QByteArray data = proc.readAll();
-            QString output = QString::fromUtf8(data);
-            QStringList chunks = output.split(QRegularExpression(QStringLiteral("[\r\n]+")), Qt::SkipEmptyParts);
-            for (QString chunk : chunks) {
-                chunk = chunk.trimmed();
-                if (chunk.isEmpty()) continue;
-
-                int pct = 50;
-                QRegularExpression pctRe(QStringLiteral(R"((\d{1,3})%)"));
-                auto match = pctRe.match(chunk);
-                if (match.hasMatch()) {
-                    pct = match.captured(1).toInt();
-                }
-
-                chunk.remove(QRegularExpression(QStringLiteral(R"([█░▓▒\-=|]{2,})")));
-                chunk = chunk.simplified();
-
-                if (progressCb && !chunk.isEmpty()) {
-                    progressCb(pct, chunk);
-                }
-            }
-        }
-    }
-    return proc.exitCode() == 0;
+    const astra::ProcessResult result = astra::runProcessStreaming(QStringLiteral("flatpak"), args, [&progressCb](const QString& line) {
+        if (!progressCb) return;
+        const QString message = withoutProgressBar(line);
+        if (message.isEmpty()) return;
+        const int percent = percentFromLine(line);
+        progressCb(percent < 0 ? 50 : percent, message);
+    });
+    return result.succeeded();
 }
 
 bool FlatpakPlugin::uninstall(const QString& packageId, const QVariantMap& options, ProgressCallback progressCb) {
@@ -369,37 +382,14 @@ bool FlatpakPlugin::uninstall(const QString& packageId, const QVariantMap& optio
     QStringList args;
     args << QStringLiteral("uninstall") << QStringLiteral("-y") << packageId;
 
-    QProcess proc;
-    proc.setProcessChannelMode(QProcess::MergedChannels);
-    proc.start(QStringLiteral("flatpak"), args);
-    if (!proc.waitForStarted(5000)) return false;
-
-    while (proc.state() == QProcess::Running) {
-        if (proc.waitForReadyRead(200)) {
-            QByteArray data = proc.readAll();
-            QString output = QString::fromUtf8(data);
-            QStringList chunks = output.split(QRegularExpression(QStringLiteral("[\r\n]+")), Qt::SkipEmptyParts);
-            for (QString chunk : chunks) {
-                chunk = chunk.trimmed();
-                if (chunk.isEmpty()) continue;
-
-                int pct = 50;
-                QRegularExpression pctRe(QStringLiteral(R"((\d{1,3})%)"));
-                auto match = pctRe.match(chunk);
-                if (match.hasMatch()) {
-                    pct = match.captured(1).toInt();
-                }
-
-                chunk.remove(QRegularExpression(QStringLiteral(R"([█░▓▒\-=|]{2,})")));
-                chunk = chunk.simplified();
-
-                if (progressCb && !chunk.isEmpty()) {
-                    progressCb(pct, chunk);
-                }
-            }
-        }
-    }
-    return proc.exitCode() == 0;
+    const astra::ProcessResult result = astra::runProcessStreaming(QStringLiteral("flatpak"), args, [&progressCb](const QString& line) {
+        if (!progressCb) return;
+        const QString message = withoutProgressBar(line);
+        if (message.isEmpty()) return;
+        const int percent = percentFromLine(line);
+        progressCb(percent < 0 ? 50 : percent, message);
+    });
+    return result.succeeded();
 }
 
 bool FlatpakPlugin::launch(const QString& packageId) {
