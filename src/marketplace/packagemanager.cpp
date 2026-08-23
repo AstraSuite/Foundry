@@ -394,7 +394,7 @@ void PackageManager::installPackage(const QString& backend, const QString& packa
     emit currentProgressChanged();
     QString statusText = QStringLiteral("Installing ") + packageId + QStringLiteral(" (") + backend + QStringLiteral(")...");
     setStatusMessage(statusText);
-    appendLog(QStringLiteral("[%1] Starting installation: %2 [%3, scope: %4]").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), packageId, backend, scope));
+    appendLog(QStringLiteral("[%1] Starting installation: %2 [%3, scope: %4]").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), packageId, backend, scope.isEmpty() ? QStringLiteral("default") : scope));
 
     auto* watcher = new QFutureWatcher<bool>(this);
     connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, packageId, backend] {
@@ -409,12 +409,53 @@ void PackageManager::installPackage(const QString& backend, const QString& packa
     });
 
     QVariantMap opts;
-    opts[QStringLiteral("scope")] = scope;
+    if (!scope.isEmpty()) opts[QStringLiteral("scope")] = scope;
 
     QFuture<bool> future = QtConcurrent::run([this, backend, packageId, opts] {
         IPackagePlugin* plugin = findPlugin(backend);
         if (!plugin) return false;
         return plugin->install(packageId, opts, [this, packageId](int pct, const QString& status) {
+            m_currentProgress = pct;
+            emit currentProgressChanged();
+            if (!status.isEmpty()) {
+                appendLog(QStringLiteral("[%1] [%2%] %3").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), QString::number(pct), status));
+            }
+            emit operationProgress(packageId, pct, status);
+        });
+    });
+    watcher->setFuture(future);
+}
+
+void PackageManager::updatePackage(const QString& backend, const QString& packageId, const QString& scope) {
+    setBusy(true);
+    m_currentProgress = 0;
+    emit currentProgressChanged();
+    setStatusMessage(QStringLiteral("Updating ") + packageId + QStringLiteral(" (") + backend + QStringLiteral(")..."));
+    appendLog(QStringLiteral("[%1] Starting update: %2 [%3]").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), packageId, backend));
+
+    if (backend == QStringLiteral("Pacman") || backend == QStringLiteral("AUR")) {
+        appendLog(QStringLiteral("[%1] %2 is upgraded with a full sync (-Syu) to avoid a partial upgrade").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), packageId));
+    }
+
+    auto* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, packageId, backend] {
+        const bool success = watcher->result();
+        watcher->deleteLater();
+        setBusy(false);
+        m_currentProgress = success ? 100 : 0;
+        emit currentProgressChanged();
+        setStatusMessage(QString());
+        appendLog(QStringLiteral("[%1] %2: %3 (%4)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : QStringLiteral("FAILED"), packageId, backend));
+        emit operationFinished(success, success ? QStringLiteral("Successfully updated ") + packageId : QStringLiteral("Failed to update ") + packageId);
+    });
+
+    QVariantMap opts;
+    if (!scope.isEmpty()) opts[QStringLiteral("scope")] = scope;
+
+    QFuture<bool> future = QtConcurrent::run([this, backend, packageId, opts] {
+        IPackagePlugin* plugin = findPlugin(backend);
+        if (!plugin) return false;
+        return plugin->update(packageId, opts, [this, packageId](int pct, const QString& status) {
             m_currentProgress = pct;
             emit currentProgressChanged();
             if (!status.isEmpty()) {
@@ -447,7 +488,7 @@ void PackageManager::uninstallPackage(const QString& backend, const QString& pac
     });
 
     QVariantMap opts;
-    opts[QStringLiteral("scope")] = scope;
+    if (!scope.isEmpty()) opts[QStringLiteral("scope")] = scope;
 
     QFuture<bool> future = QtConcurrent::run([this, backend, packageId, opts] {
         IPackagePlugin* plugin = findPlugin(backend);

@@ -238,7 +238,7 @@ PageBase {
                         enabled: !PackageManager.isBusy
                         Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                         onClicked: {
-                            PackageManager.installPackage(cardRect.modelData.backend, cardRect.modelData.id, cardRect.modelData.scope || "user");
+                            PackageManager.updatePackage(cardRect.modelData.backend, cardRect.modelData.id, cardRect.modelData.scope || "");
                         }
                     }
 

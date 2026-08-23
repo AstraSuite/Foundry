@@ -30,6 +30,11 @@ public:
 
     virtual bool install(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) = 0;
     virtual bool uninstall(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) = 0;
+
+    virtual bool update(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) {
+        return install(packageId, options, progressCb);
+    }
+
     virtual bool launch(const QString& packageId) = 0;
 
     virtual QList<QVariantMap> getInstallSources(const QString& packageId) {

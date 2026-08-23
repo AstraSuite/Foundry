@@ -309,7 +309,7 @@ PageBase {
                         activeOnColour: Colours.palette.m3error
                         onClicked: {
                             if (root.appData) {
-                                PackageManager.uninstallPackage(root.appData.backend || "", root.appData.id || "");
+                                PackageManager.uninstallPackage(root.appData.backend || "", root.appData.id || "", root.selectedScope);
                             }
                         }
                     }

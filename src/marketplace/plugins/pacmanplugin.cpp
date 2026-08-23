@@ -235,6 +235,23 @@ bool PacmanPlugin::uninstall(const QString& packageId, const QVariantMap& option
     return result.succeeded();
 }
 
+bool PacmanPlugin::update(const QString& packageId, const QVariantMap& options, ProgressCallback progressCb) {
+    Q_UNUSED(options);
+    if (!isAvailable()) return false;
+
+    const astra::ProcessResult result = astra::runProcessStreaming(
+        QStringLiteral("pkexec"),
+        {QStringLiteral("pacman"), QStringLiteral("-Syu"), QStringLiteral("--noconfirm"), packageId},
+        [&progressCb](const QString& line) {
+            if (progressCb) progressCb(50, line);
+        });
+
+    if (progressCb && !result.started) {
+        progressCb(0, QStringLiteral("Could not start pkexec"));
+    }
+    return result.succeeded();
+}
+
 bool PacmanPlugin::launch(const QString& packageId) {
     if (!isAvailable()) return false;
 
