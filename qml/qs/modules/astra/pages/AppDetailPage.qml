@@ -39,6 +39,9 @@ PageBase {
     property bool requiredByExpanded: true
 
     property bool descExpanded: false
+    property bool buildScriptExpanded: false
+    property bool buildScriptLoading: false
+    property string buildScript: ""
     property bool isLoadingDetails: true
     property string selectedScope: (root.appData && root.appData.scope) ? root.appData.scope : "user"
 
@@ -52,6 +55,15 @@ PageBase {
         }
 
         return text.replace(/\n\n/g, "<br><br>").replace(/\n/g, "<br>");
+    }
+
+    function toggleBuildScript(): void {
+        root.buildScriptExpanded = !root.buildScriptExpanded;
+
+        if (root.buildScriptExpanded && root.buildScript.length === 0 && !root.buildScriptLoading && root.appData) {
+            root.buildScriptLoading = true;
+            PackageManager.fetchBuildScriptAsync(root.appData.id || "");
+        }
     }
 
     function loadDetails(): void {
@@ -93,6 +105,13 @@ PageBase {
                     root.isInstalled = PackageManager.isPackageInstalled(root.appData.backend || "", root.appData.id);
                     root.loadDetails();
                 }
+            }
+            function onBuildScriptReady(packageId, script): void {
+                if (!root.appData || packageId !== root.appData.id)
+                    return;
+
+                root.buildScriptLoading = false;
+                root.buildScript = script;
             }
         }
 
@@ -956,6 +975,116 @@ PageBase {
                                         color: Colours.palette.m3onSurface
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        StyledRect {
+            Layout.fillWidth: true
+            visible: root.appData && root.appData.backend === "AUR"
+            implicitHeight: buildScriptColumn.implicitHeight + Tokens.padding.medium * 2
+            radius: Tokens.rounding.large
+            color: Colours.tPalette.m3surfaceContainer
+
+            ColumnLayout {
+                id: buildScriptColumn
+
+                anchors.fill: parent
+                anchors.margins: Tokens.padding.medium
+                spacing: Tokens.padding.small
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Tokens.padding.small
+
+                    MaterialIcon {
+                        text: "terminal"
+                        fontStyle: Tokens.font.icon.medium
+                        color: Colours.palette.m3primary
+                    }
+
+                    StyledText {
+                        text: qsTr("PKGBUILD")
+                        font: Tokens.font.title.large
+                        color: Colours.palette.m3onSurface
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    IconButton {
+                        type: ButtonBase.Text
+                        icon: "expand_more"
+                        rotation: root.buildScriptExpanded ? 180 : 0
+
+                        Behavior on rotation {
+                            Anim {}
+                        }
+
+                        onClicked: root.toggleBuildScript()
+                    }
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: !root.buildScriptExpanded
+                    text: qsTr("AUR packages are built from a script that runs on your machine. Review it before installing.")
+                    font: Tokens.font.body.small
+                    color: Colours.palette.m3onSurfaceVariant
+                    wrapMode: Text.WordWrap
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                    implicitHeight: root.buildScriptExpanded ? 320 : 0
+                    clip: true
+
+                    Behavior on implicitHeight {
+                        NumberAnimation {
+                            duration: 250
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
+                    StyledRect {
+                        anchors.fill: parent
+                        radius: Tokens.rounding.medium
+                        color: Colours.palette.m3surfaceContainerLow
+
+                        LoadingIndicator {
+                            anchors.centerIn: parent
+                            visible: root.buildScriptLoading
+                            implicitSize: 32
+                            color: Colours.palette.m3primary
+                        }
+
+                        StyledText {
+                            anchors.centerIn: parent
+                            visible: !root.buildScriptLoading && root.buildScript.length === 0
+                            text: qsTr("The build script could not be loaded.")
+                            font: Tokens.font.body.small
+                            color: Colours.palette.m3onSurfaceVariant
+                        }
+
+                        StyledFlickable {
+                            anchors.fill: parent
+                            anchors.margins: Tokens.padding.small
+                            visible: root.buildScript.length > 0
+                            contentWidth: buildScriptText.implicitWidth
+                            contentHeight: buildScriptText.implicitHeight
+                            clip: true
+
+                            Text {
+                                id: buildScriptText
+
+                                text: root.buildScript
+                                font.family: "Monospace, DejaVu Sans Mono, Courier New"
+                                font.pixelSize: 12
+                                color: Colours.palette.m3onSurface
+                                textFormat: Text.PlainText
+                                wrapMode: Text.NoWrap
                             }
                         }
                     }
