@@ -30,7 +30,10 @@ public:
 
     QList<QVariantMap> getInstallSources(const QString& packageId) override;
 
+    QVariantList getCollection(const QString& collection, int limit);
+
     static QString scopeArgument(const QString& scope);
+    static QVariantList parseCollectionHits(const QByteArray& payload, QSet<QString>& seen);
     static QVariantList parseSearchOutput(const QString& output, QSet<QString>& seen);
     static QVariantList parseInstalledOutput(const QString& output, const QString& scope);
     static QVariantList parseUpdatesOutput(const QString& output);

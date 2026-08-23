@@ -13,6 +13,7 @@
 #include <QNetworkReply>
 #include <QEventLoop>
 #include <QUrl>
+#include <QUrlQuery>
 
 FlatpakPlugin::FlatpakPlugin(QObject* parent) : IPackagePlugin(parent) {
     m_enabled = m_settings.value(QStringLiteral("Flatpak/enabled"), true).toBool();
@@ -163,6 +164,61 @@ QList<QVariantMap> FlatpakPlugin::getInstallSources(const QString& packageId) {
     return sources;
 }
 
+QVariantList FlatpakPlugin::parseCollectionHits(const QByteArray& payload, QSet<QString>& seen) {
+    QVariantList results;
+
+    const QJsonDocument document = QJsonDocument::fromJson(payload);
+    if (!document.isObject() || !document.object().contains(QStringLiteral("hits"))) return results;
+
+    const QJsonArray hits = document.object()[QStringLiteral("hits")].toArray();
+    for (const QJsonValue& value : hits) {
+        const QJsonObject object = value.toObject();
+        const QString appId = object.contains(QStringLiteral("app_id")) ? object[QStringLiteral("app_id")].toString() : object[QStringLiteral("id")].toString();
+        if (appId.isEmpty() || seen.contains(appId)) continue;
+        seen.insert(appId);
+
+        QVariantMap item;
+        item[QStringLiteral("id")] = appId;
+        item[QStringLiteral("name")] = object.contains(QStringLiteral("name")) ? object[QStringLiteral("name")].toString() : appId;
+        item[QStringLiteral("summary")] = object[QStringLiteral("summary")].toString();
+        item[QStringLiteral("backend")] = QStringLiteral("Flatpak");
+        item[QStringLiteral("scope")] = QStringLiteral("user");
+        item[QStringLiteral("icon")] = object[QStringLiteral("icon")].toString().isEmpty() ? appId : object[QStringLiteral("icon")].toString();
+        item[QStringLiteral("developer")] = object[QStringLiteral("developer_name")].toString();
+        item[QStringLiteral("verified")] = object.value(QStringLiteral("verification_verified")).toBool();
+        results.append(item);
+    }
+    return results;
+}
+
+QVariantList FlatpakPlugin::getCollection(const QString& collection, int limit) {
+    if (!isAvailable() || !m_enabled) return {};
+
+    QNetworkAccessManager manager;
+    QUrl url(QStringLiteral("https://flathub.org/api/v2/collection/") + collection);
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("page"), QStringLiteral("1"));
+    query.addQueryItem(QStringLiteral("per_page"), QString::number(qBound(1, limit, 50)));
+    url.setQuery(query);
+
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+    request.setTransferTimeout(kDetailsTimeoutMs);
+
+    QEventLoop loop;
+    QNetworkReply* reply = manager.get(request);
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    QVariantList results;
+    if (reply->error() == QNetworkReply::NoError) {
+        QSet<QString> seen;
+        results = parseCollectionHits(reply->readAll(), seen);
+    }
+    reply->deleteLater();
+    return results;
+}
+
 QVariantList FlatpakPlugin::search(const QString& query, const QVariantMap& options) {
     Q_UNUSED(options);
     QVariantList results;
@@ -209,26 +265,7 @@ QVariantList FlatpakPlugin::search(const QString& query, const QVariantMap& opti
             loop.exec();
 
             if (reply->error() == QNetworkReply::NoError) {
-                QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-                if (doc.isObject() && doc.object().contains(QStringLiteral("hits"))) {
-                    QJsonArray hits = doc.object()[QStringLiteral("hits")].toArray();
-                    for (const QJsonValue& val : hits) {
-                        QJsonObject obj = val.toObject();
-                        QString appId = obj.contains(QStringLiteral("app_id")) ? obj[QStringLiteral("app_id")].toString() : obj[QStringLiteral("id")].toString();
-                        if (appId.isEmpty() || seen.contains(appId)) continue;
-                        seen.insert(appId);
-
-                        QVariantMap item;
-                        item[QStringLiteral("id")] = appId;
-                        item[QStringLiteral("name")] = obj.contains(QStringLiteral("name")) ? obj[QStringLiteral("name")].toString() : appId;
-                        item[QStringLiteral("summary")] = obj.contains(QStringLiteral("summary")) ? obj[QStringLiteral("summary")].toString() : QString();
-                        item[QStringLiteral("backend")] = QStringLiteral("Flatpak");
-                        item[QStringLiteral("scope")] = QStringLiteral("user");
-                        item[QStringLiteral("icon")] = obj.contains(QStringLiteral("icon")) && !obj[QStringLiteral("icon")].toString().isEmpty() ? obj[QStringLiteral("icon")].toString() : appId;
-                        item[QStringLiteral("verified")] = obj.value(QStringLiteral("verification_verified")).toBool();
-                        results.append(item);
-                    }
-                }
+                results.append(parseCollectionHits(reply->readAll(), seen));
             }
             reply->deleteLater();
         }
@@ -251,26 +288,7 @@ QVariantList FlatpakPlugin::search(const QString& query, const QVariantMap& opti
         loop.exec();
 
         if (reply->error() == QNetworkReply::NoError) {
-            QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-            if (doc.isObject() && doc.object().contains(QStringLiteral("hits"))) {
-                QJsonArray hits = doc.object()[QStringLiteral("hits")].toArray();
-                for (const QJsonValue& val : hits) {
-                    QJsonObject obj = val.toObject();
-                    QString appId = obj.contains(QStringLiteral("app_id")) ? obj[QStringLiteral("app_id")].toString() : obj[QStringLiteral("id")].toString();
-                    if (appId.isEmpty() || seen.contains(appId)) continue;
-                    seen.insert(appId);
-
-                    QVariantMap item;
-                    item[QStringLiteral("id")] = appId;
-                    item[QStringLiteral("name")] = obj.contains(QStringLiteral("name")) ? obj[QStringLiteral("name")].toString() : appId;
-                    item[QStringLiteral("summary")] = obj.contains(QStringLiteral("summary")) ? obj[QStringLiteral("summary")].toString() : QString();
-                    item[QStringLiteral("backend")] = QStringLiteral("Flatpak");
-                    item[QStringLiteral("scope")] = QStringLiteral("user");
-                    item[QStringLiteral("icon")] = obj.contains(QStringLiteral("icon")) && !obj[QStringLiteral("icon")].toString().isEmpty() ? obj[QStringLiteral("icon")].toString() : appId;
-                    item[QStringLiteral("verified")] = obj.value(QStringLiteral("verification_verified")).toBool();
-                    results.append(item);
-                }
-            }
+            results.append(parseCollectionHits(reply->readAll(), seen));
         }
         reply->deleteLater();
     }
