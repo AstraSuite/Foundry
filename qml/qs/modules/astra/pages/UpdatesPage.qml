@@ -51,6 +51,13 @@ PageBase {
 
     data: [
         Connections {
+            target: root.nState
+
+            function onRefreshRequested(): void {
+                root.checkUpdates();
+            }
+        },
+        Connections {
             target: PackageManager
             function onUpdatesCompleted(updates): void {
                 root.updatesList = updates ? updates : [];

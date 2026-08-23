@@ -22,6 +22,8 @@ QtObject {
     signal close
     signal subPageOpened(idx: int)
     signal subPageClosed
+    signal focusSearchRequested
+    signal refreshRequested
 
     function openSubPage(idx: int): void {
         subPageIdxStack.push(idx);
