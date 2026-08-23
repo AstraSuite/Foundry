@@ -23,6 +23,24 @@ PageBase {
     property int visibleCount: 15
     property bool isSearching: false
 
+    property var collections: ({})
+    property bool feedLoading: false
+
+    readonly property var homeSections: [
+        { key: "popular", label: qsTr("Popular on Flathub") },
+        { key: "trending", label: qsTr("Trending") },
+        { key: "recently-updated", label: qsTr("Recently updated") }
+    ]
+
+    readonly property bool hasFeedContent: {
+        for (let i = 0; i < root.homeSections.length; i++) {
+            const apps = root.collections[root.homeSections[i].key];
+            if (apps && apps.length > 0)
+                return true;
+        }
+        return false;
+    }
+
     readonly property bool hasActiveQuery: root.searchQuery.trim().length > 0 || root.activeCategory !== ""
 
     readonly property var filteredPackages: root.packagesList.filter(pkg => {
@@ -72,9 +90,21 @@ PageBase {
         performSearch();
     }
 
+    function loadHomeFeed(): void {
+        if (!PackageManager.isFlatpakAvailable)
+            return;
+
+        root.feedLoading = true;
+        for (let i = 0; i < root.homeSections.length; i++) {
+            PackageManager.fetchCollectionAsync(root.homeSections[i].key, 12);
+        }
+    }
+
     Component.onCompleted: {
         if (hasActiveQuery) {
             refreshSearch();
+        } else {
+            loadHomeFeed();
         }
     }
 
@@ -100,6 +130,13 @@ PageBase {
             function onSearchCompleted(results): void {
                 root.packagesList = results ? results : [];
                 root.isSearching = false;
+            }
+
+            function onCollectionReady(collection, apps): void {
+                const updated = Object.assign({}, root.collections);
+                updated[collection] = apps ? apps : [];
+                root.collections = updated;
+                root.feedLoading = false;
             }
         }
 
@@ -376,10 +413,164 @@ PageBase {
 
         Item { width: 1; height: Tokens.padding.small }
 
+        Column {
+            id: homeFeed
+
+            width: root ? root.width : 0
+            spacing: Tokens.padding.medium
+            visible: !root.hasActiveQuery && !root.isSearching && root.hasFeedContent
+
+            Repeater {
+                model: root.homeSections
+
+                ColumnLayout {
+                    id: feedSection
+
+                    required property var modelData
+                    readonly property var apps: root.collections[modelData.key] ?? []
+
+                    width: homeFeed.width
+                    spacing: Tokens.spacing.extraSmall
+                    visible: feedSection.apps.length > 0
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Tokens.padding.small
+                        text: feedSection.modelData.label
+                        font: Tokens.font.label.medium
+                        color: Colours.palette.m3onSurfaceVariant
+                        elide: Text.ElideRight
+                    }
+
+                    StyledFlickable {
+                        Layout.fillWidth: true
+                        implicitHeight: 184
+                        contentWidth: feedRow.implicitWidth
+                        contentHeight: height
+                        flickableDirection: Flickable.HorizontalFlick
+                        clip: true
+
+                        Row {
+                            id: feedRow
+
+                            height: parent.height
+                            spacing: Tokens.padding.small
+
+                            Repeater {
+                                model: feedSection.apps
+
+                                StyledRect {
+                                    id: feedCard
+
+                                    required property var modelData
+
+                                    implicitWidth: 158
+                                    implicitHeight: 176
+                                    radius: Tokens.rounding.large
+                                    color: Colours.tPalette.m3surfaceContainer
+
+                                    StateLayer {
+                                        anchors.fill: parent
+                                        radius: feedCard.radius
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            root.nState.selectedApp = feedCard.modelData;
+                                            root.nState.openSubPage(1);
+                                        }
+                                    }
+
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: Tokens.padding.medium
+                                        spacing: Tokens.padding.extraSmall
+
+                                        StyledRect {
+                                            Layout.alignment: Qt.AlignHCenter
+                                            implicitWidth: 56
+                                            implicitHeight: 56
+                                            radius: Tokens.rounding.medium
+                                            color: Colours.palette.m3surfaceContainerHigh
+                                            clip: true
+
+                                            Image {
+                                                id: feedIcon
+
+                                                anchors.fill: parent
+                                                anchors.margins: 6
+                                                asynchronous: true
+                                                fillMode: Image.PreserveAspectFit
+                                                smooth: true
+                                                mipmap: true
+                                                visible: feedIcon.status === Image.Ready
+                                                source: PackageManager.getIconPath(feedCard.modelData.icon || feedCard.modelData.id || "", "Flatpak")
+                                            }
+
+                                            MaterialIcon {
+                                                anchors.centerIn: parent
+                                                visible: !feedIcon.visible
+                                                text: "deployed_code"
+                                                fontStyle: Tokens.font.icon.medium
+                                                color: Colours.palette.m3onSurfaceVariant
+                                            }
+                                        }
+
+                                        StyledText {
+                                            Layout.fillWidth: true
+                                            horizontalAlignment: Text.AlignHCenter
+                                            text: feedCard.modelData.name || feedCard.modelData.id
+                                            font: Tokens.font.title.small
+                                            color: Colours.palette.m3onSurface
+                                            elide: Text.ElideRight
+                                        }
+
+                                        StyledText {
+                                            Layout.fillWidth: true
+                                            Layout.fillHeight: true
+                                            horizontalAlignment: Text.AlignHCenter
+                                            text: feedCard.modelData.summary || ""
+                                            font: Tokens.font.body.small
+                                            color: Colours.palette.m3onSurfaceVariant
+                                            wrapMode: Text.WordWrap
+                                            maximumLineCount: 2
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         Item {
             width: root ? root.width : 0
             implicitHeight: Math.max(350, root.height - 180)
-            visible: !root.hasActiveQuery && !root.isSearching
+            visible: !root.hasActiveQuery && !root.isSearching && root.feedLoading && !root.hasFeedContent
+
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: Tokens.padding.medium
+
+                LoadingIndicator {
+                    implicitSize: 52
+                    color: Colours.palette.m3primary
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                StyledText {
+                    text: qsTr("Loading recommendations...")
+                    font: Tokens.font.title.medium
+                    color: Colours.palette.m3onSurfaceVariant
+                    Layout.alignment: Qt.AlignHCenter
+                }
+            }
+        }
+
+        Item {
+            width: root ? root.width : 0
+            implicitHeight: Math.max(350, root.height - 180)
+            visible: !root.hasActiveQuery && !root.isSearching && !root.hasFeedContent && !root.feedLoading
 
             ColumnLayout {
                 anchors.centerIn: parent

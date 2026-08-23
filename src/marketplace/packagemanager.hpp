@@ -1,6 +1,8 @@
 #pragma once
 
+#include <QHash>
 #include <QObject>
+#include <QSet>
 #include <QString>
 #include <QVariantList>
 #include <QVariantMap>
@@ -89,6 +91,7 @@ public:
     Q_INVOKABLE QString getIconPath(const QString& iconName, const QString& backend = QString());
     Q_INVOKABLE QVariantMap getPackageDetails(const QString& packageId, const QString& backend = QString());
     Q_INVOKABLE void fetchPackageDetailsAsync(const QString& packageId, const QString& backend = QString());
+    Q_INVOKABLE void fetchCollectionAsync(const QString& collection, int limit = 12);
     Q_INVOKABLE QVariantList checkForUpdates();
     Q_INVOKABLE void checkForUpdatesAsync();
     Q_INVOKABLE void updateAllPackages();
@@ -113,6 +116,7 @@ signals:
     void installedCompleted(const QVariantList& results);
     void updatesCompleted(const QVariantList& updates);
     void packageDetailsReady(const QVariantMap& details);
+    void collectionReady(const QString& collection, const QVariantList& apps);
 
 private:
     void setBusy(bool busy);
@@ -131,6 +135,8 @@ private:
     QList<IPackagePlugin*> m_plugins;
 
     QThreadPool m_pluginPool;
+    QHash<QString, QVariantList> m_collections;
+    QSet<QString> m_pendingCollections;
 
     quint64 m_searchSequence{0};
     quint64 m_installedSequence{0};

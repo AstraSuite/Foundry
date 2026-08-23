@@ -550,6 +550,34 @@ void PackageManager::fetchPackageDetailsAsync(const QString& packageId, const QS
     watcher->setFuture(future);
 }
 
+void PackageManager::fetchCollectionAsync(const QString& collection, int limit) {
+    if (collection.isEmpty() || !m_flatpakPlugin) return;
+
+    if (m_collections.contains(collection)) {
+        const QVariantList cached = m_collections.value(collection);
+        QMetaObject::invokeMethod(this, [this, collection, cached] {
+            emit collectionReady(collection, cached);
+        }, Qt::QueuedConnection);
+        return;
+    }
+
+    if (m_pendingCollections.contains(collection)) return;
+    m_pendingCollections.insert(collection);
+
+    auto* watcher = new QFutureWatcher<QVariantList>(this);
+    connect(watcher, &QFutureWatcher<QVariantList>::finished, this, [this, watcher, collection] {
+        const QVariantList apps = watcher->result();
+        watcher->deleteLater();
+        m_pendingCollections.remove(collection);
+        if (!apps.isEmpty()) m_collections.insert(collection, apps);
+        emit collectionReady(collection, apps);
+    });
+
+    watcher->setFuture(QtConcurrent::run([this, collection, limit] {
+        return m_flatpakPlugin->getCollection(collection, limit);
+    }));
+}
+
 QVariantList PackageManager::checkForUpdates() {
     QVariantList results;
     const bool useCaelestia = useCaelestiaUpdate();
