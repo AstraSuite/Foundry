@@ -16,6 +16,7 @@ PageBase {
     title: qsTr("Updates")
 
     property var updatesList: []
+    property var history: []
     property var selectedApp: null
     property bool isLoading: false
     property int visibleCount: 25
@@ -26,8 +27,13 @@ PageBase {
         PackageManager.checkForUpdatesAsync();
     }
 
+    function reloadHistory(): void {
+        root.history = PackageManager.recentOperations(8);
+    }
+
     Component.onCompleted: {
         checkUpdates();
+        reloadHistory();
     }
 
     Item {
@@ -52,6 +58,9 @@ PageBase {
             }
             function onOperationFinished(success, message): void {
                 root.checkUpdates();
+            }
+            function onHistoryChanged(): void {
+                root.reloadHistory();
             }
         }
     ]
@@ -287,6 +296,91 @@ PageBase {
                         fontStyle: Tokens.font.icon.medium
                         color: Colours.palette.m3onSurfaceVariant
                         Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                    }
+                }
+            }
+        }
+
+        Item {
+            width: 1
+            height: Tokens.padding.large
+            visible: root.history.length > 0
+        }
+
+        StyledText {
+            text: qsTr("Recent activity")
+            font: Tokens.font.label.medium
+            color: Colours.palette.m3onSurfaceVariant
+            visible: root.history.length > 0
+            leftPadding: Tokens.padding.small
+            bottomPadding: Tokens.spacing.extraSmall
+        }
+
+        Repeater {
+            id: historyRepeater
+
+            model: root.history
+
+            ConnectedRect {
+                id: historyRect
+
+                required property var modelData
+                required property int index
+
+                width: root ? root.width : 0
+                first: index === 0
+                last: index === historyRepeater.count - 1
+                implicitHeight: historyLayout.implicitHeight + Tokens.padding.medium * 2
+
+                RowLayout {
+                    id: historyLayout
+
+                    anchors.fill: parent
+                    anchors.margins: Tokens.padding.medium
+                    spacing: Tokens.padding.medium
+
+                    MaterialIcon {
+                        text: historyRect.modelData.success ? "check_circle" : "error"
+                        fontStyle: Tokens.font.icon.medium
+                        color: historyRect.modelData.success ? Colours.palette.m3primary : Colours.palette.m3error
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: {
+                                const name = historyRect.modelData.package || "";
+                                switch (historyRect.modelData.action) {
+                                case "install":
+                                    return historyRect.modelData.success ? qsTr("Installed %1").arg(name) : qsTr("Failed to install %1").arg(name);
+                                case "update":
+                                    return historyRect.modelData.success ? qsTr("Updated %1").arg(name) : qsTr("Failed to update %1").arg(name);
+                                case "remove":
+                                    return historyRect.modelData.success ? qsTr("Removed %1").arg(name) : qsTr("Failed to remove %1").arg(name);
+                                default:
+                                    return historyRect.modelData.success ? qsTr("System update completed") : qsTr("System update failed");
+                                }
+                            }
+                            font: Tokens.font.body.medium
+                            color: Colours.palette.m3onSurface
+                            elide: Text.ElideRight
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: {
+                                const stamp = new Date(historyRect.modelData.time).toLocaleString(Qt.locale(), Locale.ShortFormat);
+                                const backend = historyRect.modelData.backend || "";
+                                return backend.length > 0 ? backend + " - " + stamp : stamp;
+                            }
+                            font: Tokens.font.label.small
+                            color: Colours.palette.m3onSurfaceVariant
+                            elide: Text.ElideRight
+                        }
                     }
                 }
             }
