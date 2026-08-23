@@ -69,6 +69,8 @@ public:
     void setUseCaelestiaUpdate(bool enable);
     void setAurHelper(const QString& helper);
 
+    bool runSystemUpdate(const std::function<void(const QString&)>& logCallback);
+
     void registerPlugin(IPackagePlugin* plugin);
     QList<IPackagePlugin*> plugins() const { return m_plugins; }
     IPackagePlugin* findPlugin(const QString& backendOrId) const;
