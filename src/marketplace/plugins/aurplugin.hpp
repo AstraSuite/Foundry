@@ -29,6 +29,9 @@ public:
     bool uninstall(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) override;
     bool launch(const QString& packageId) override;
 
+    static QVariantList parseForeignOutput(const QString& output);
+    static QVariantList parseUpdatesOutput(const QString& output);
+
 private:
     bool m_enabled{true};
     QString m_aurHelper{QStringLiteral("auto")};

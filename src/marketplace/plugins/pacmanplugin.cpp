@@ -1,15 +1,21 @@
 #include "pacmanplugin.hpp"
-#include <QProcess>
+#include "pluginprocess.hpp"
+
 #include <QFile>
-#include <QSet>
-#include <QDir>
+#include <QProcess>
+#include <QStandardPaths>
+
+namespace {
+constexpr int kQueryTimeoutMs = 15000;
+constexpr int kUpdatesTimeoutMs = 30000;
+}
 
 PacmanPlugin::PacmanPlugin(QObject* parent) : IPackagePlugin(parent) {
     m_enabled = m_settings.value(QStringLiteral("Pacman/enabled"), true).toBool();
 }
 
 bool PacmanPlugin::isAvailable() const {
-    return QFile::exists(QStringLiteral("/usr/bin/pacman"));
+    return !QStandardPaths::findExecutable(QStringLiteral("pacman")).isEmpty();
 }
 
 void PacmanPlugin::setEnabled(bool enabled) {
@@ -20,213 +26,232 @@ void PacmanPlugin::setEnabled(bool enabled) {
     }
 }
 
-QVariantList PacmanPlugin::search(const QString& query, const QVariantMap& options) {
-    Q_UNUSED(options);
+QVariantList PacmanPlugin::parseSearchOutput(const QString& output) {
     QVariantList results;
-    if (!isAvailable() || !m_enabled) return results;
+    const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    QSet<QString> seen;
 
-    QString q = query.trimmed().toLower();
-    if (q.isEmpty()) return results;
+    for (qsizetype i = 0; i < lines.size(); ++i) {
+        const QString& header = lines.at(i);
+        if (header.startsWith(QLatin1Char(' ')) || header.startsWith(QLatin1Char('\t'))) continue;
 
-    QProcess proc;
-    proc.start(QStringLiteral("pacman"), {QStringLiteral("-Ss"), q});
-    if (proc.waitForFinished(5000)) {
-        QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-        QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-        QSet<QString> seen;
-        for (int i = 0; i < lines.size(); i += 2) {
-            QString header = lines[i];
-            QString desc = (i + 1 < lines.size()) ? lines[i + 1].trimmed() : QStringLiteral("");
-            QStringList parts = header.split(QLatin1Char(' '), Qt::SkipEmptyParts);
-            if (!parts.isEmpty()) {
-                QString fullName = parts.first();
-                QString repo = fullName.contains(QLatin1Char('/')) ? fullName.section(QLatin1Char('/'), 0, 0) : QStringLiteral("extra");
-                QString pkgName = fullName.contains(QLatin1Char('/')) ? fullName.section(QLatin1Char('/'), 1) : fullName;
-
-                if (seen.contains(pkgName)) continue;
-                seen.insert(pkgName);
-
-                QVariantMap item;
-                item[QStringLiteral("id")] = pkgName;
-                item[QStringLiteral("name")] = pkgName;
-                item[QStringLiteral("summary")] = desc;
-                item[QStringLiteral("backend")] = QStringLiteral("Pacman");
-                item[QStringLiteral("repository")] = repo;
-                item[QStringLiteral("scope")] = QStringLiteral("system");
-                item[QStringLiteral("icon")] = pkgName;
-                results.append(item);
+        QString description;
+        if (i + 1 < lines.size()) {
+            const QString& next = lines.at(i + 1);
+            if (next.startsWith(QLatin1Char(' ')) || next.startsWith(QLatin1Char('\t'))) {
+                description = next.trimmed();
+                ++i;
             }
         }
-    } else {
-        proc.kill();
-        proc.waitForFinished(500);
+
+        const QString fullName = header.split(QLatin1Char(' '), Qt::SkipEmptyParts).value(0);
+        if (fullName.isEmpty()) continue;
+
+        const QString repository = fullName.contains(QLatin1Char('/')) ? fullName.section(QLatin1Char('/'), 0, 0) : QStringLiteral("extra");
+        const QString packageName = fullName.contains(QLatin1Char('/')) ? fullName.section(QLatin1Char('/'), 1) : fullName;
+        if (packageName.isEmpty() || seen.contains(packageName)) continue;
+        seen.insert(packageName);
+
+        const QStringList headerParts = header.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+
+        QVariantMap item;
+        item[QStringLiteral("id")] = packageName;
+        item[QStringLiteral("name")] = packageName;
+        item[QStringLiteral("version")] = headerParts.value(1);
+        item[QStringLiteral("summary")] = description;
+        item[QStringLiteral("backend")] = QStringLiteral("Pacman");
+        item[QStringLiteral("repository")] = repository;
+        item[QStringLiteral("scope")] = QStringLiteral("system");
+        item[QStringLiteral("icon")] = packageName;
+        item[QStringLiteral("isInstalled")] = header.contains(QStringLiteral("[installed"));
+        results.append(item);
     }
     return results;
 }
 
-QVariantList PacmanPlugin::getInstalled() {
-    QVariantList results;
-    if (!isAvailable() || !m_enabled) return results;
-
-    QSet<QString> localPkgs;
-    QProcess qmProc;
-    qmProc.start(QStringLiteral("pacman"), {QStringLiteral("-Qm")});
-    if (qmProc.waitForFinished(2000)) {
-        QString qmOut = QString::fromUtf8(qmProc.readAllStandardOutput()).trimmed();
-        QStringList qmLines = qmOut.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-        for (const QString& l : qmLines) {
-            QString name = l.split(QLatin1Char(' ')).value(0);
-            if (!name.isEmpty()) localPkgs.insert(name);
-        }
-    } else {
-        qmProc.kill();
-        qmProc.waitForFinished(500);
+QSet<QString> PacmanPlugin::parseForeignOutput(const QString& output) {
+    QSet<QString> packages;
+    const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    for (const QString& line : lines) {
+        const QString name = line.split(QLatin1Char(' '), Qt::SkipEmptyParts).value(0);
+        if (!name.isEmpty()) packages.insert(name);
     }
+    return packages;
+}
 
-    QProcess proc;
-    proc.start(QStringLiteral("pacman"), {QStringLiteral("-Qe")});
-    if (proc.waitForFinished(5000)) {
-        QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-        QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-        int count = 0;
-        for (const QString& line : lines) {
-            if (++count > 200) break;
-            QStringList parts = line.split(QLatin1Char(' '), Qt::SkipEmptyParts);
-            if (parts.size() >= 2) {
-                QString pkgId = parts.value(0);
-                if (localPkgs.contains(pkgId)) continue;
+QVariantList PacmanPlugin::parseInstalledOutput(const QString& output, const QSet<QString>& foreign) {
+    QVariantList results;
+    const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
 
-                QVariantMap item;
-                item[QStringLiteral("id")] = pkgId;
-                item[QStringLiteral("name")] = pkgId;
-                item[QStringLiteral("version")] = parts.value(1);
-                item[QStringLiteral("backend")] = QStringLiteral("Pacman");
-                item[QStringLiteral("repository")] = QStringLiteral("extra");
-                item[QStringLiteral("scope")] = QStringLiteral("system");
-                item[QStringLiteral("icon")] = pkgId;
-                item[QStringLiteral("isInstalled")] = true;
-                results.append(item);
-            }
-        }
-    } else {
-        proc.kill();
-        proc.waitForFinished(500);
+    for (const QString& line : lines) {
+        const QStringList parts = line.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+        if (parts.size() < 2) continue;
+
+        const QString packageId = parts.value(0);
+        if (foreign.contains(packageId)) continue;
+
+        QVariantMap item;
+        item[QStringLiteral("id")] = packageId;
+        item[QStringLiteral("name")] = packageId;
+        item[QStringLiteral("version")] = parts.value(1);
+        item[QStringLiteral("backend")] = QStringLiteral("Pacman");
+        item[QStringLiteral("repository")] = QStringLiteral("extra");
+        item[QStringLiteral("scope")] = QStringLiteral("system");
+        item[QStringLiteral("icon")] = packageId;
+        item[QStringLiteral("isInstalled")] = true;
+        results.append(item);
     }
     return results;
 }
 
-QVariantList PacmanPlugin::getUpdates() {
+QVariantList PacmanPlugin::parseUpdatesOutput(const QString& output) {
     QVariantList results;
-    if (!isAvailable() || !m_enabled) return results;
+    const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
 
-    QProcess proc;
-    proc.start(QStringLiteral("checkupdates"));
-    if (proc.waitForFinished(8000)) {
-        QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-        QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-        for (const QString& line : lines) {
-            QStringList parts = line.split(QLatin1Char(' '), Qt::SkipEmptyParts);
-            if (parts.size() >= 4) {
-                QVariantMap item;
-                item[QStringLiteral("id")] = parts.value(0);
-                item[QStringLiteral("name")] = parts.value(0);
-                item[QStringLiteral("version")] = parts.value(1) + QStringLiteral(" -> ") + parts.value(3);
-                item[QStringLiteral("backend")] = QStringLiteral("Pacman");
-                item[QStringLiteral("scope")] = QStringLiteral("system");
-                item[QStringLiteral("icon")] = parts.value(0);
-                results.append(item);
-            }
-        }
-    } else {
-        proc.kill();
-        proc.waitForFinished(500);
+    for (const QString& line : lines) {
+        const QStringList parts = line.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+        if (parts.size() < 4) continue;
+
+        QVariantMap item;
+        item[QStringLiteral("id")] = parts.value(0);
+        item[QStringLiteral("name")] = parts.value(0);
+        item[QStringLiteral("version")] = parts.value(1) + QStringLiteral(" -> ") + parts.value(3);
+        item[QStringLiteral("backend")] = QStringLiteral("Pacman");
+        item[QStringLiteral("scope")] = QStringLiteral("system");
+        item[QStringLiteral("icon")] = parts.value(0);
+        results.append(item);
     }
     return results;
 }
 
-QVariantMap PacmanPlugin::getDetails(const QString& packageId) {
+QVariantMap PacmanPlugin::parseInfoOutput(const QString& output, const QString& packageId) {
     QVariantMap map;
     map[QStringLiteral("id")] = packageId;
     map[QStringLiteral("name")] = packageId;
     map[QStringLiteral("backend")] = QStringLiteral("Pacman");
 
-    QProcess proc;
-    proc.start(QStringLiteral("pacman"), {QStringLiteral("-Si"), packageId});
-    if (!proc.waitForFinished(3000) || proc.exitCode() != 0) {
-        proc.start(QStringLiteral("pacman"), {QStringLiteral("-Qi"), packageId});
-        proc.waitForFinished(3000);
-    }
+    QMap<QString, QString> fields;
+    QString currentField;
 
-    QString output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-    QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    const QStringList lines = output.split(QLatin1Char('\n'));
     for (const QString& line : lines) {
-        if (line.startsWith(QLatin1String("Description"))) {
-            map[QStringLiteral("summary")] = line.section(QLatin1Char(':'), 1).trimmed();
-            map[QStringLiteral("description")] = line.section(QLatin1Char(':'), 1).trimmed();
-        } else if (line.startsWith(QLatin1String("Version"))) {
-            map[QStringLiteral("version")] = line.section(QLatin1Char(':'), 1).trimmed();
-        } else if (line.startsWith(QLatin1String("URL"))) {
-            map[QStringLiteral("homepage")] = line.section(QLatin1Char(':'), 1).trimmed();
-        } else if (line.startsWith(QLatin1String("Licenses"))) {
-            map[QStringLiteral("license")] = line.section(QLatin1Char(':'), 1).trimmed();
-        } else if (line.startsWith(QLatin1String("Packager"))) {
-            map[QStringLiteral("developer")] = line.section(QLatin1Char(':'), 1).trimmed();
+        if (line.trimmed().isEmpty()) continue;
+
+        const qsizetype separator = line.indexOf(QLatin1String(" : "));
+        const bool continuation = line.startsWith(QLatin1Char(' ')) || line.startsWith(QLatin1Char('\t'));
+
+        if (!continuation && separator > 0) {
+            currentField = line.left(separator).trimmed();
+            fields.insert(currentField, line.mid(separator + 3).trimmed());
+        } else if (!currentField.isEmpty()) {
+            fields[currentField] += QLatin1Char(' ') + line.trimmed();
         }
     }
+
+    const auto assign = [&](const QString& field, const QString& key) {
+        const QString value = fields.value(field);
+        if (!value.isEmpty() && value != QLatin1String("None")) map[key] = value;
+    };
+
+    assign(QStringLiteral("Description"), QStringLiteral("summary"));
+    assign(QStringLiteral("Description"), QStringLiteral("description"));
+    assign(QStringLiteral("Version"), QStringLiteral("version"));
+    assign(QStringLiteral("URL"), QStringLiteral("homepage"));
+    assign(QStringLiteral("Licenses"), QStringLiteral("license"));
+    assign(QStringLiteral("Packager"), QStringLiteral("developer"));
+    assign(QStringLiteral("Repository"), QStringLiteral("repository"));
+    assign(QStringLiteral("Installed Size"), QStringLiteral("size"));
+    assign(QStringLiteral("Download Size"), QStringLiteral("downloadSize"));
+
     return map;
+}
+
+QVariantList PacmanPlugin::search(const QString& query, const QVariantMap& options) {
+    Q_UNUSED(options);
+    if (!isAvailable() || !m_enabled) return {};
+
+    const QString trimmed = query.trimmed();
+    if (trimmed.isEmpty()) return {};
+
+    const astra::ProcessResult result = astra::runProcess(QStringLiteral("pacman"), {QStringLiteral("-Ss"), trimmed.toLower()}, kQueryTimeoutMs);
+    return parseSearchOutput(result.output);
+}
+
+QVariantList PacmanPlugin::getInstalled() {
+    if (!isAvailable() || !m_enabled) return {};
+
+    const astra::ProcessResult foreign = astra::runProcess(QStringLiteral("pacman"), {QStringLiteral("-Qm")}, kQueryTimeoutMs);
+    const astra::ProcessResult explicitly = astra::runProcess(QStringLiteral("pacman"), {QStringLiteral("-Qe")}, kQueryTimeoutMs);
+    return parseInstalledOutput(explicitly.output, parseForeignOutput(foreign.output));
+}
+
+QVariantList PacmanPlugin::getUpdates() {
+    if (!isAvailable() || !m_enabled) return {};
+    if (QStandardPaths::findExecutable(QStringLiteral("checkupdates")).isEmpty()) return {};
+
+    const astra::ProcessResult result = astra::runProcess(QStringLiteral("checkupdates"), {}, kUpdatesTimeoutMs);
+    return parseUpdatesOutput(result.output);
+}
+
+QVariantMap PacmanPlugin::getDetails(const QString& packageId) {
+    astra::ProcessResult result = astra::runProcess(QStringLiteral("pacman"), {QStringLiteral("-Si"), packageId}, kQueryTimeoutMs);
+    if (!result.succeeded() || result.output.trimmed().isEmpty()) {
+        result = astra::runProcess(QStringLiteral("pacman"), {QStringLiteral("-Qi"), packageId}, kQueryTimeoutMs);
+    }
+    return parseInfoOutput(result.output, packageId);
 }
 
 bool PacmanPlugin::install(const QString& packageId, const QVariantMap& options, ProgressCallback progressCb) {
     Q_UNUSED(options);
     if (!isAvailable()) return false;
-    QProcess proc;
-    proc.setProcessChannelMode(QProcess::MergedChannels);
-    proc.start(QStringLiteral("pkexec"), {QStringLiteral("pacman"), QStringLiteral("-S"), QStringLiteral("--noconfirm"), packageId});
-    if (!proc.waitForStarted(5000)) return false;
 
-    while (proc.state() == QProcess::Running) {
-        if (proc.waitForReadyRead(200)) {
-            while (proc.canReadLine()) {
-                QString line = QString::fromUtf8(proc.readLine()).trimmed();
-                if (!line.isEmpty() && progressCb) progressCb(50, line);
-            }
-        }
+    const astra::ProcessResult result = astra::runProcessStreaming(
+        QStringLiteral("pkexec"),
+        {QStringLiteral("pacman"), QStringLiteral("-S"), QStringLiteral("--noconfirm"), packageId},
+        [&progressCb](const QString& line) {
+            if (progressCb) progressCb(50, line);
+        });
+
+    if (progressCb && !result.succeeded() && !result.started) {
+        progressCb(0, QStringLiteral("Could not start pkexec"));
     }
-    QString rest = QString::fromUtf8(proc.readAll()).trimmed();
-    if (!rest.isEmpty() && progressCb) {
-        for (const QString& line : rest.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
-            progressCb(100, line.trimmed());
-        }
-    }
-    return proc.exitCode() == 0;
+    return result.succeeded();
 }
 
 bool PacmanPlugin::uninstall(const QString& packageId, const QVariantMap& options, ProgressCallback progressCb) {
     Q_UNUSED(options);
     if (!isAvailable()) return false;
-    QProcess proc;
-    proc.setProcessChannelMode(QProcess::MergedChannels);
-    proc.start(QStringLiteral("pkexec"), {QStringLiteral("pacman"), QStringLiteral("-Rns"), QStringLiteral("--noconfirm"), packageId});
-    if (!proc.waitForStarted(5000)) return false;
 
-    while (proc.state() == QProcess::Running) {
-        if (proc.waitForReadyRead(200)) {
-            while (proc.canReadLine()) {
-                QString line = QString::fromUtf8(proc.readLine()).trimmed();
-                if (!line.isEmpty() && progressCb) progressCb(50, line);
-            }
-        }
+    const astra::ProcessResult result = astra::runProcessStreaming(
+        QStringLiteral("pkexec"),
+        {QStringLiteral("pacman"), QStringLiteral("-Rns"), QStringLiteral("--noconfirm"), packageId},
+        [&progressCb](const QString& line) {
+            if (progressCb) progressCb(50, line);
+        });
+
+    if (progressCb && !result.succeeded() && !result.started) {
+        progressCb(0, QStringLiteral("Could not start pkexec"));
     }
-    QString rest = QString::fromUtf8(proc.readAll()).trimmed();
-    if (!rest.isEmpty() && progressCb) {
-        for (const QString& line : rest.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
-            progressCb(100, line.trimmed());
-        }
-    }
-    return proc.exitCode() == 0;
+    return result.succeeded();
 }
 
 bool PacmanPlugin::launch(const QString& packageId) {
     if (!isAvailable()) return false;
+
+    const astra::ProcessResult files = astra::runProcess(QStringLiteral("pacman"), {QStringLiteral("-Qlq"), packageId}, kQueryTimeoutMs);
+    const QStringList lines = files.output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+
+    QString fallback;
+    for (const QString& line : lines) {
+        const QString path = line.trimmed();
+        if (!path.startsWith(QLatin1String("/usr/bin/")) || path.endsWith(QLatin1Char('/'))) continue;
+
+        const QString binary = path.mid(9);
+        if (binary.isEmpty()) continue;
+        if (binary.compare(packageId, Qt::CaseInsensitive) == 0) return QProcess::startDetached(path);
+        if (fallback.isEmpty()) fallback = path;
+    }
+
+    if (!fallback.isEmpty()) return QProcess::startDetached(fallback);
     return QProcess::startDetached(packageId);
 }

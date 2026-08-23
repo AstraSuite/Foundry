@@ -1,6 +1,7 @@
 #pragma once
 
 #include "packageplugin.hpp"
+#include <QSet>
 #include <QSettings>
 
 class FlatpakPlugin : public IPackagePlugin {
@@ -27,6 +28,10 @@ public:
     bool launch(const QString& packageId) override;
 
     QList<QVariantMap> getInstallSources(const QString& packageId) override;
+
+    static QVariantList parseSearchOutput(const QString& output, QSet<QString>& seen);
+    static QVariantList parseInstalledOutput(const QString& output, const QString& scope);
+    static QVariantList parseUpdatesOutput(const QString& output);
 
 private:
     bool m_enabled{true};

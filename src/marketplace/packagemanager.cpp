@@ -1,4 +1,5 @@
 #include "packagemanager.hpp"
+#include "pluginprocess.hpp"
 #include <QFutureWatcher>
 #include <QtConcurrent>
 #include <QDir>
@@ -560,73 +561,19 @@ void PackageManager::updateAllPackages() {
     const bool useCaelestia = useCaelestiaUpdate();
 
     QFuture<bool> future = QtConcurrent::run([this, useCaelestia] {
-        // Flatpak updates
-        if (enableFlatpak() && QFile::exists(QStringLiteral("/usr/bin/flatpak"))) {
+        const auto logLine = [this](const QString& line) { appendLog(line); };
+
+        if (enableFlatpak() && !QStandardPaths::findExecutable(QStringLiteral("flatpak")).isEmpty()) {
             appendLog(QStringLiteral("[%1] Running Flatpak update (flatpak update -y)...").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss"))));
-            QProcess proc;
-            proc.setProcessChannelMode(QProcess::MergedChannels);
-            proc.start(QStringLiteral("flatpak"), {QStringLiteral("update"), QStringLiteral("-y")});
-            if (proc.waitForStarted(5000)) {
-                while (proc.state() == QProcess::Running) {
-                    if (proc.waitForReadyRead(200)) {
-                        while (proc.canReadLine()) {
-                            QString line = QString::fromUtf8(proc.readLine()).trimmed();
-                            if (!line.isEmpty()) appendLog(line);
-                        }
-                    }
-                }
-                QString rest = QString::fromUtf8(proc.readAll()).trimmed();
-                if (!rest.isEmpty()) {
-                    for (const QString& line : rest.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
-                        appendLog(line.trimmed());
-                    }
-                }
-            }
+            astra::runProcessStreaming(QStringLiteral("flatpak"), {QStringLiteral("update"), QStringLiteral("-y")}, logLine);
         }
 
-        // System updates: either via Caelestia CLI or direct Pacman
-        if (useCaelestia && QFile::exists(QStringLiteral("/usr/bin/caelestia"))) {
+        if (useCaelestia && !QStandardPaths::findExecutable(QStringLiteral("caelestia")).isEmpty()) {
             appendLog(QStringLiteral("[%1] Running Caelestia update (caelestia update --noconfirm)...").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss"))));
-            QProcess cProc;
-            cProc.setProcessChannelMode(QProcess::MergedChannels);
-            cProc.start(QStringLiteral("caelestia"), {QStringLiteral("update"), QStringLiteral("--noconfirm")});
-            if (cProc.waitForStarted(5000)) {
-                while (cProc.state() == QProcess::Running) {
-                    if (cProc.waitForReadyRead(200)) {
-                        while (cProc.canReadLine()) {
-                            QString line = QString::fromUtf8(cProc.readLine()).trimmed();
-                            if (!line.isEmpty()) appendLog(line);
-                        }
-                    }
-                }
-                QString rest = QString::fromUtf8(cProc.readAll()).trimmed();
-                if (!rest.isEmpty()) {
-                    for (const QString& line : rest.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
-                        appendLog(line.trimmed());
-                    }
-                }
-            }
-        } else if (enablePacman() && QFile::exists(QStringLiteral("/usr/bin/pacman"))) {
+            astra::runProcessStreaming(QStringLiteral("caelestia"), {QStringLiteral("update"), QStringLiteral("--noconfirm")}, logLine);
+        } else if (enablePacman() && !QStandardPaths::findExecutable(QStringLiteral("pacman")).isEmpty()) {
             appendLog(QStringLiteral("[%1] Running Pacman update (pkexec pacman -Syu --noconfirm)...").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss"))));
-            QProcess pacProc;
-            pacProc.setProcessChannelMode(QProcess::MergedChannels);
-            pacProc.start(QStringLiteral("pkexec"), {QStringLiteral("pacman"), QStringLiteral("-Syu"), QStringLiteral("--noconfirm")});
-            if (pacProc.waitForStarted(5000)) {
-                while (pacProc.state() == QProcess::Running) {
-                    if (pacProc.waitForReadyRead(200)) {
-                        while (pacProc.canReadLine()) {
-                            QString line = QString::fromUtf8(pacProc.readLine()).trimmed();
-                            if (!line.isEmpty()) appendLog(line);
-                        }
-                    }
-                }
-                QString rest = QString::fromUtf8(pacProc.readAll()).trimmed();
-                if (!rest.isEmpty()) {
-                    for (const QString& line : rest.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
-                        appendLog(line.trimmed());
-                    }
-                }
-            }
+            astra::runProcessStreaming(QStringLiteral("pkexec"), {QStringLiteral("pacman"), QStringLiteral("-Syu"), QStringLiteral("--noconfirm")}, logLine);
         }
 
         return true;

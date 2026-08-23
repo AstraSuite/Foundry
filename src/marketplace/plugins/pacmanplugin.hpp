@@ -1,6 +1,7 @@
 #pragma once
 
 #include "packageplugin.hpp"
+#include <QSet>
 #include <QSettings>
 
 class PacmanPlugin : public IPackagePlugin {
@@ -25,6 +26,12 @@ public:
     bool install(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) override;
     bool uninstall(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) override;
     bool launch(const QString& packageId) override;
+
+    static QVariantList parseSearchOutput(const QString& output);
+    static QSet<QString> parseForeignOutput(const QString& output);
+    static QVariantList parseInstalledOutput(const QString& output, const QSet<QString>& foreign);
+    static QVariantList parseUpdatesOutput(const QString& output);
+    static QVariantMap parseInfoOutput(const QString& output, const QString& packageId);
 
 private:
     bool m_enabled{true};
