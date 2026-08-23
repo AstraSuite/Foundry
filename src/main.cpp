@@ -204,7 +204,6 @@ public:
 #include "tray/traymanager.hpp"
 #include <QApplication>
 #include <QQmlContext>
-#include <QQuickWindow>
 #include <QLocalServer>
 #include <QLocalSocket>
 
@@ -387,49 +386,30 @@ int main(int argc, char* argv[]) {
             QCoreApplication::exit(-1);
     }, Qt::QueuedConnection);
 
-    QObject::connect(TrayManager::instance(), &TrayManager::requestShowMainWindow, [&engine]() {
-        const auto rootObjects = engine.rootObjects();
-        for (auto* obj : rootObjects) {
-            if (auto* window = qobject_cast<QQuickWindow*>(obj)) {
-                window->setVisible(true);
-                window->show();
-                window->raise();
-                window->requestActivate();
-            }
-        }
-    });
-
-    QObject::connect(TrayManager::instance(), &TrayManager::requestToggleMainWindow, [&engine]() {
-        const auto rootObjects = engine.rootObjects();
-        for (auto* obj : rootObjects) {
-            if (auto* window = qobject_cast<QQuickWindow*>(obj)) {
-                if (window->isVisible()) {
-                    window->setVisible(false);
-                } else {
-                    window->setVisible(true);
-                    window->show();
-                    window->raise();
-                    window->requestActivate();
-                }
-            }
-        }
-    });
-
-    QLocalServer::removeServer(serverName);
     auto* ipcServer = new QLocalServer(&app);
-    QObject::connect(ipcServer, &QLocalServer::newConnection, [ipcServer]() {
+    ipcServer->setSocketOptions(QLocalServer::UserAccessOption);
+    QObject::connect(ipcServer, &QLocalServer::newConnection, ipcServer, [ipcServer]() {
         while (QLocalSocket* client = ipcServer->nextPendingConnection()) {
-            QObject::connect(client, &QLocalSocket::readyRead, [client]() {
-                const QByteArray cmd = client->readAll().trimmed();
-                if (cmd == "SHOW" || cmd == "OPEN_GUI") {
-                    TrayManager::instance()->showMainWindow();
-                } else if (cmd == "TOGGLE") {
-                    TrayManager::instance()->toggleMainWindow();
+            QObject::connect(client, &QLocalSocket::disconnected, client, &QLocalSocket::deleteLater);
+            QObject::connect(client, &QLocalSocket::readyRead, client, [client]() {
+                while (client->canReadLine()) {
+                    const QByteArray command = client->readLine().trimmed();
+                    if (command == "SHOW" || command == "OPEN_GUI") {
+                        TrayManager::instance()->showMainWindow();
+                    } else if (command == "TOGGLE") {
+                        TrayManager::instance()->toggleMainWindow();
+                    } else if (command == "TRAY") {
+                        TrayManager::instance()->setTrayEnabled(true);
+                    }
                 }
             });
         }
     });
-    ipcServer->listen(serverName);
+
+    if (!ipcServer->listen(serverName) && ipcServer->serverError() == QAbstractSocket::AddressInUseError) {
+        QLocalServer::removeServer(serverName);
+        ipcServer->listen(serverName);
+    }
 
     engine.rootContext()->setContextProperty(QStringLiteral("startInTray"), launchTray);
     engine.rootContext()->setContextProperty(QStringLiteral("appVersion"), QStringLiteral(ASTRA_VERSION));
