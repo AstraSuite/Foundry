@@ -44,8 +44,32 @@ Each plugin directory must contain a `plugin.json` manifest file and any associa
 - `name` (string, required): Human-readable display name.
 - `description` (string, optional): Short summary of the provider.
 - `icon` (string, optional): Material icon identifier (e.g. `extension`, `download`, `wallpaper`).
-- `requiredBinary` (string, optional): Executable that must be available in PATH or system for the plugin to be active.
+- `requiredBinary` (string, optional): Executable that must exist for the plugin to be active. A plain name is looked up in `PATH`, a value containing a slash is treated as an absolute path.
 - `commands` (object, required): Shell commands executed for respective actions. Variable placeholders `${QUERY}`, `${ID}`, `${SCOPE}` are substituted at runtime.
+
+### Placeholder Substitution
+
+Commands run through `/bin/sh -c`. Placeholders are **not** pasted into the command string: every
+`${NAME}` is rewritten to a positional parameter and the value is handed to the shell as an argument, so
+user input such as a search query is never interpreted as shell syntax.
+
+```json
+"search": "./search.sh \"${QUERY}\""
+```
+
+runs as `/bin/sh -c './search.sh "${1}"' astra-plugin <query>`, and `./search.sh` receives the query
+verbatim in `$1`. Quoting the placeholder in the manifest is still recommended so values containing
+whitespace stay a single argument.
+
+Available placeholders are `${QUERY}` (search), `${ID}` (install, uninstall, details, launch) and the
+install options, currently `${SCOPE}`. Unknown placeholders expand to an empty argument.
+
+### Exit Codes and Timeouts
+
+`install` and `uninstall` are reported as successful only when the command exits with status `0`;
+everything they print on stdout is streamed into the operation log while they run. Metadata commands
+(`search`, `list`, `updates`, `details`) are given 20 seconds before they are terminated, install and
+uninstall are allowed to run for up to an hour, and `launch` is started detached without waiting.
 
 ## Expected JSON Outputs
 
