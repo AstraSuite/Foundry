@@ -24,6 +24,11 @@ PageBase {
     readonly property string detailLicenses: (root.infoMap && (root.infoMap.licenses || root.infoMap.license)) ? (root.infoMap.licenses || root.infoMap.license) : ""
     readonly property string detailInstalledSize: (root.infoMap && (root.infoMap.installedSize || root.infoMap.size)) ? (root.infoMap.installedSize || root.infoMap.size) : ""
     readonly property string detailDownloadSize: (root.infoMap && root.infoMap.downloadSize) ? root.infoMap.downloadSize : ""
+    readonly property var permissionList: (root.infoMap && root.infoMap.permissions) ? root.infoMap.permissions : []
+    readonly property bool detailVerified: !!(root.infoMap && root.infoMap.verified)
+    readonly property int detailContentFlags: (root.infoMap && root.infoMap.contentRatingFlags !== undefined) ? root.infoMap.contentRatingFlags : -1
+    readonly property real detailInstalls: (root.infoMap && root.infoMap.installsTotal) ? root.infoMap.installsTotal : 0
+    readonly property real detailInstallsLastMonth: (root.infoMap && root.infoMap.installsLastMonth) ? root.infoMap.installsLastMonth : 0
     readonly property string detailBuildDate: (root.infoMap && root.infoMap.buildDate) ? root.infoMap.buildDate : ""
     readonly property string detailInstallReason: (root.infoMap && root.infoMap.installReason) ? root.infoMap.installReason : ""
     readonly property string detailProvides: (root.infoMap && root.infoMap.provides) ? root.infoMap.provides : ""
@@ -55,6 +60,14 @@ PageBase {
         }
 
         return text.replace(/\n\n/g, "<br><br>").replace(/\n/g, "<br>");
+    }
+
+    function compactCount(value: real): string {
+        if (value >= 1000000)
+            return (value / 1000000).toFixed(1) + "M";
+        if (value >= 1000)
+            return Math.round(value / 1000) + "k";
+        return String(value);
     }
 
     function toggleBuildScript(): void {
@@ -219,36 +232,38 @@ PageBase {
                         text: "•"
                         font: Tokens.font.body.small
                         color: Colours.palette.m3onSurfaceVariant
-                        visible: root.appData && root.appData.backend === "Flatpak"
+                        visible: root.detailVerified
                     }
 
                     StyledText {
-                        text: qsTr("Official")
+                        text: qsTr("Verified")
                         font: Tokens.font.body.small
                         color: Colours.palette.m3onSurfaceVariant
-                        visible: root.appData && root.appData.backend === "Flatpak"
+                        visible: root.detailVerified
                     }
 
                     MaterialIcon {
                         text: "verified"
                         fontStyle: Tokens.font.icon.small
                         color: Colours.palette.m3primary
-                        visible: root.appData && root.appData.backend === "Flatpak"
+                        visible: root.detailVerified
                     }
                 }
 
                 RowLayout {
                     spacing: Tokens.padding.extraSmall
-                    visible: root.appData && root.appData.backend === "Flatpak"
+                    visible: root.detailInstalls > 0
 
-                    StyledText {
-                        text: "★★★★★"
-                        font: Tokens.font.body.small
-                        color: "#f59e0b"
+                    MaterialIcon {
+                        text: "download"
+                        fontStyle: Tokens.font.icon.small
+                        color: Colours.palette.m3onSurfaceVariant
                     }
 
                     StyledText {
-                        text: "4.9 (1.2k ratings)"
+                        text: root.detailInstallsLastMonth > 0
+                            ? qsTr("%1 installs, %2 in the last month").arg(root.compactCount(root.detailInstalls)).arg(root.compactCount(root.detailInstallsLastMonth))
+                            : qsTr("%1 installs").arg(root.compactCount(root.detailInstalls))
                         font: Tokens.font.body.small
                         color: Colours.palette.m3onSurfaceVariant
                     }
@@ -457,7 +472,7 @@ PageBase {
                         Layout.alignment: Qt.AlignHCenter
                     }
                     StyledText {
-                        text: "235.5 MB"
+                        text: root.detailDownloadSize !== "" ? root.detailDownloadSize : "-"
                         font: Tokens.font.label.large
                         color: Colours.palette.m3onSurface
                         Layout.alignment: Qt.AlignHCenter
@@ -481,19 +496,19 @@ PageBase {
                     anchors.centerIn: parent
                     spacing: 4
                     MaterialIcon {
-                        text: "security"
+                        text: root.detailVerified ? "verified" : "groups"
                         fontStyle: Tokens.font.icon.medium
                         color: Colours.palette.m3primary
                         Layout.alignment: Qt.AlignHCenter
                     }
                     StyledText {
-                        text: qsTr("Verified Safe")
+                        text: root.detailVerified ? qsTr("Verified") : qsTr("Community")
                         font: Tokens.font.label.large
                         color: Colours.palette.m3onSurface
                         Layout.alignment: Qt.AlignHCenter
                     }
                     StyledText {
-                        text: qsTr("Security Status")
+                        text: qsTr("Publisher")
                         font: Tokens.font.label.small
                         color: Colours.palette.m3onSurfaceVariant
                         Layout.alignment: Qt.AlignHCenter
@@ -511,19 +526,19 @@ PageBase {
                     anchors.centerIn: parent
                     spacing: 4
                     MaterialIcon {
-                        text: "computer"
+                        text: "hard_drive"
                         fontStyle: Tokens.font.icon.medium
                         color: Colours.palette.m3primary
                         Layout.alignment: Qt.AlignHCenter
                     }
                     StyledText {
-                        text: qsTr("Desktop")
+                        text: root.detailInstalledSize !== "" ? root.detailInstalledSize : (root.appData && root.appData.size ? root.appData.size : "-")
                         font: Tokens.font.label.large
                         color: Colours.palette.m3onSurface
                         Layout.alignment: Qt.AlignHCenter
                     }
                     StyledText {
-                        text: qsTr("Platform")
+                        text: qsTr("Installed Size")
                         font: Tokens.font.label.small
                         color: Colours.palette.m3onSurfaceVariant
                         Layout.alignment: Qt.AlignHCenter
@@ -550,7 +565,7 @@ PageBase {
                         Layout.alignment: Qt.AlignHCenter
                     }
                     StyledText {
-                        text: qsTr("Everyone")
+                        text: root.detailContentFlags < 0 ? "-" : (root.detailContentFlags === 0 ? qsTr("Everyone") : qsTr("%1 flagged").arg(root.detailContentFlags))
                         font: Tokens.font.label.large
                         color: Colours.palette.m3onSurface
                         Layout.alignment: Qt.AlignHCenter
@@ -625,6 +640,74 @@ PageBase {
                         Anim {}
                     }
                     onClicked: root.descExpanded = !root.descExpanded
+                }
+            }
+        }
+
+        StyledRect {
+            Layout.fillWidth: true
+            visible: root.permissionList.length > 0
+            implicitHeight: permissionsColumn.implicitHeight + Tokens.padding.medium * 2
+            radius: Tokens.rounding.large
+            color: Colours.tPalette.m3surfaceContainer
+
+            ColumnLayout {
+                id: permissionsColumn
+
+                anchors.fill: parent
+                anchors.margins: Tokens.padding.medium
+                spacing: Tokens.padding.small
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Tokens.padding.small
+
+                    MaterialIcon {
+                        text: "shield"
+                        fontStyle: Tokens.font.icon.medium
+                        color: Colours.palette.m3primary
+                    }
+
+                    StyledText {
+                        text: qsTr("Permissions")
+                        font: Tokens.font.title.large
+                        color: Colours.palette.m3onSurface
+                    }
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: qsTr("What this application is allowed to access outside its sandbox.")
+                    font: Tokens.font.body.small
+                    color: Colours.palette.m3onSurfaceVariant
+                    wrapMode: Text.WordWrap
+                }
+
+                Repeater {
+                    model: root.permissionList
+
+                    RowLayout {
+                        id: permissionRow
+
+                        required property var modelData
+
+                        Layout.fillWidth: true
+                        spacing: Tokens.padding.small
+
+                        MaterialIcon {
+                            text: permissionRow.modelData.icon
+                            fontStyle: Tokens.font.icon.small
+                            color: permissionRow.modelData.sensitive ? Colours.palette.m3error : Colours.palette.m3onSurfaceVariant
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: permissionRow.modelData.label
+                            font: Tokens.font.body.medium
+                            color: permissionRow.modelData.sensitive ? Colours.palette.m3error : Colours.palette.m3onSurface
+                            elide: Text.ElideRight
+                        }
+                    }
                 }
             }
         }
