@@ -209,6 +209,37 @@ QVariantList PackageManager::recentOperations(int limit) const {
     return operations;
 }
 
+astra::CancellationTokenPtr PackageManager::beginCancellableOperation(IPackagePlugin* plugin) {
+    m_cancellation = std::make_shared<astra::CancellationToken>();
+    if (plugin) plugin->setCancellationToken(m_cancellation);
+    emit isCancellableChanged();
+    return m_cancellation;
+}
+
+void PackageManager::endCancellableOperation() {
+    m_lastOperationCancelled = m_cancellation && m_cancellation->isCancelled();
+
+    for (IPackagePlugin* plugin : m_plugins) {
+        plugin->setCancellationToken({});
+    }
+    m_cancellation.reset();
+    emit isCancellableChanged();
+}
+
+void PackageManager::cancelCurrentOperation() {
+    if (!m_cancellation) return;
+
+    appendLog(QStringLiteral("[%1] Cancelling the running operation...").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss"))));
+    m_cancellation->requestCancellation();
+}
+
+void PackageManager::setOperationRunning(bool running) {
+    if (m_operationRunning == running) return;
+
+    m_operationRunning = running;
+    emit isOperationRunningChanged();
+}
+
 void PackageManager::setBusy(bool busy) {
     if (m_isBusy != busy) {
         m_isBusy = busy;
@@ -456,6 +487,8 @@ void PackageManager::clearLogs() {
 }
 
 void PackageManager::installPackage(const QString& backend, const QString& packageId, const QString& scope) {
+    beginCancellableOperation(findPlugin(backend));
+    setOperationRunning(true);
     setBusy(true);
     m_currentProgress = 0;
     emit currentProgressChanged();
@@ -467,13 +500,16 @@ void PackageManager::installPackage(const QString& backend, const QString& packa
     connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, packageId, backend] {
         bool success = watcher->result();
         watcher->deleteLater();
+        endCancellableOperation();
+        setOperationRunning(false);
         setBusy(false);
         m_currentProgress = success ? 100 : 0;
         emit currentProgressChanged();
         setStatusMessage(QString());
-        appendLog(QStringLiteral("[%1] %2: %3 (%4)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : QStringLiteral("FAILED"), packageId, backend));
+        appendLog(QStringLiteral("[%1] %2: %3 (%4)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : (m_lastOperationCancelled ? QStringLiteral("CANCELLED") : QStringLiteral("FAILED")), packageId, backend));
         recordOperation(QStringLiteral("install"), packageId, backend, success);
-        emit operationFinished(success, success ? QStringLiteral("Successfully installed ") + packageId : QStringLiteral("Failed to install ") + packageId);
+        emit operationFinished(success, success ? tr("Successfully installed %1").arg(packageId)
+                                               : (m_lastOperationCancelled ? tr("Cancelled the installation of %1").arg(packageId) : tr("Failed to install %1").arg(packageId)));
     });
 
     QVariantMap opts;
@@ -495,6 +531,8 @@ void PackageManager::installPackage(const QString& backend, const QString& packa
 }
 
 void PackageManager::updatePackage(const QString& backend, const QString& packageId, const QString& scope) {
+    beginCancellableOperation(findPlugin(backend));
+    setOperationRunning(true);
     setBusy(true);
     m_currentProgress = 0;
     emit currentProgressChanged();
@@ -509,13 +547,16 @@ void PackageManager::updatePackage(const QString& backend, const QString& packag
     connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, packageId, backend] {
         const bool success = watcher->result();
         watcher->deleteLater();
+        endCancellableOperation();
+        setOperationRunning(false);
         setBusy(false);
         m_currentProgress = success ? 100 : 0;
         emit currentProgressChanged();
         setStatusMessage(QString());
-        appendLog(QStringLiteral("[%1] %2: %3 (%4)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : QStringLiteral("FAILED"), packageId, backend));
+        appendLog(QStringLiteral("[%1] %2: %3 (%4)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : (m_lastOperationCancelled ? QStringLiteral("CANCELLED") : QStringLiteral("FAILED")), packageId, backend));
         recordOperation(QStringLiteral("update"), packageId, backend, success);
-        emit operationFinished(success, success ? QStringLiteral("Successfully updated ") + packageId : QStringLiteral("Failed to update ") + packageId);
+        emit operationFinished(success, success ? tr("Successfully updated %1").arg(packageId)
+                                               : (m_lastOperationCancelled ? tr("Cancelled the update of %1").arg(packageId) : tr("Failed to update %1").arg(packageId)));
     });
 
     QVariantMap opts;
@@ -537,6 +578,8 @@ void PackageManager::updatePackage(const QString& backend, const QString& packag
 }
 
 void PackageManager::uninstallPackage(const QString& backend, const QString& packageId, const QString& scope) {
+    beginCancellableOperation(findPlugin(backend));
+    setOperationRunning(true);
     setBusy(true);
     m_currentProgress = 0;
     emit currentProgressChanged();
@@ -548,13 +591,16 @@ void PackageManager::uninstallPackage(const QString& backend, const QString& pac
     connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, packageId, backend] {
         bool success = watcher->result();
         watcher->deleteLater();
+        endCancellableOperation();
+        setOperationRunning(false);
         setBusy(false);
         m_currentProgress = success ? 100 : 0;
         emit currentProgressChanged();
         setStatusMessage(QString());
-        appendLog(QStringLiteral("[%1] %2: %3 (%4)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : QStringLiteral("FAILED"), packageId, backend));
+        appendLog(QStringLiteral("[%1] %2: %3 (%4)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : (m_lastOperationCancelled ? QStringLiteral("CANCELLED") : QStringLiteral("FAILED")), packageId, backend));
         recordOperation(QStringLiteral("remove"), packageId, backend, success);
-        emit operationFinished(success, success ? QStringLiteral("Successfully uninstalled ") + packageId : QStringLiteral("Failed to uninstall ") + packageId);
+        emit operationFinished(success, success ? tr("Successfully uninstalled %1").arg(packageId)
+                                               : (m_lastOperationCancelled ? tr("Cancelled the removal of %1").arg(packageId) : tr("Failed to uninstall %1").arg(packageId)));
     });
 
     QVariantMap opts;
@@ -714,38 +760,48 @@ void PackageManager::updateAllPackages() {
     connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher] {
         bool success = watcher->result();
         watcher->deleteLater();
+        endCancellableOperation();
+        setOperationRunning(false);
         setBusy(false);
         setStatusMessage(QString());
         appendLog(QStringLiteral("[%1] %2: System update completed").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : QStringLiteral("FAILED")));
         recordOperation(QStringLiteral("system"), QString(), QString(), success);
-        emit operationFinished(success, success ? QStringLiteral("All packages updated successfully") : QStringLiteral("Some updates could not be applied"));
+        emit operationFinished(success, success ? tr("All packages updated successfully")
+                                               : (m_lastOperationCancelled ? tr("Cancelled the update") : tr("Some updates could not be applied")));
         checkForUpdatesAsync();
     });
 
-    QFuture<bool> future = QtConcurrent::run([this] {
-        return runSystemUpdate([this](const QString& line) { appendLog(line); });
+    const astra::CancellationTokenPtr token = beginCancellableOperation(nullptr);
+    setOperationRunning(true);
+
+    QFuture<bool> future = QtConcurrent::run([this, token] {
+        return runSystemUpdate([this](const QString& line) { appendLog(line); }, token);
     });
     watcher->setFuture(future);
 }
 
-bool PackageManager::runSystemUpdate(const std::function<void(const QString&)>& logCallback) {
+bool PackageManager::runSystemUpdate(const std::function<void(const QString&)>& logCallback, const astra::CancellationTokenPtr& cancellation) {
     const auto stamped = [&logCallback](const QString& message) {
         logCallback(QStringLiteral("[%1] %2").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), message));
     };
 
     bool success = true;
 
+    const auto cancelled = [&cancellation] { return cancellation && cancellation->isCancelled(); };
+
     if (enableFlatpak() && !QStandardPaths::findExecutable(QStringLiteral("flatpak")).isEmpty()) {
         stamped(QStringLiteral("Running Flatpak update (flatpak update -y)..."));
-        success = astra::runProcessStreaming(QStringLiteral("flatpak"), {QStringLiteral("update"), QStringLiteral("-y")}, logCallback).succeeded() && success;
+        success = astra::runProcessStreaming(QStringLiteral("flatpak"), {QStringLiteral("update"), QStringLiteral("-y")}, logCallback, 0, {}, cancellation).succeeded() && success;
     }
+
+    if (cancelled()) return false;
 
     if (useCaelestiaUpdate() && !QStandardPaths::findExecutable(QStringLiteral("caelestia")).isEmpty()) {
         stamped(QStringLiteral("Running Caelestia update (caelestia update --noconfirm)..."));
-        success = astra::runProcessStreaming(QStringLiteral("caelestia"), {QStringLiteral("update"), QStringLiteral("--noconfirm")}, logCallback).succeeded() && success;
+        success = astra::runProcessStreaming(QStringLiteral("caelestia"), {QStringLiteral("update"), QStringLiteral("--noconfirm")}, logCallback, 0, {}, cancellation).succeeded() && success;
     } else if (enablePacman() && !QStandardPaths::findExecutable(QStringLiteral("pacman")).isEmpty()) {
         stamped(QStringLiteral("Running Pacman update (pkexec pacman -Syu --noconfirm)..."));
-        success = astra::runProcessStreaming(QStringLiteral("pkexec"), {QStringLiteral("pacman"), QStringLiteral("-Syu"), QStringLiteral("--noconfirm")}, logCallback).succeeded() && success;
+        success = astra::runProcessStreaming(QStringLiteral("pkexec"), {QStringLiteral("pacman"), QStringLiteral("-Syu"), QStringLiteral("--noconfirm")}, logCallback, 0, {}, cancellation).succeeded() && success;
     }
 
     return success;

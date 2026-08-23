@@ -132,6 +132,16 @@ ScriptablePlugin::ScriptResult ScriptablePlugin::runCommand(const QString& cmdTe
         proc.waitForReadyRead(200);
         drain(false);
 
+        if (m_cancellation && m_cancellation->isCancelled()) {
+            proc.terminate();
+            if (!proc.waitForFinished(3000)) {
+                proc.kill();
+                proc.waitForFinished(1000);
+            }
+            result.timedOut = true;
+            break;
+        }
+
         if (timeoutMs > 0 && elapsed.hasExpired(timeoutMs)) {
             result.timedOut = true;
             proc.kill();
