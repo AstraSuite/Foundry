@@ -338,7 +338,10 @@ int CliHandler::handleInstall(const Options& options, PackageManager& pm) {
     QVariantMap pluginOptions;
     if (!options.scope.isEmpty()) pluginOptions[QStringLiteral("scope")] = options.scope;
 
-    if (plugin->install(packageId, pluginOptions, reportProgress)) {
+    const bool installed = plugin->install(packageId, pluginOptions, reportProgress);
+    pm.recordOperation(QStringLiteral("install"), packageId, plugin->id(), installed);
+
+    if (installed) {
         std::cout << green() << bold() << "Successfully installed " << text(packageId) << reset() << "\n";
         return 0;
     }
@@ -363,7 +366,10 @@ int CliHandler::handleUninstall(const Options& options, PackageManager& pm) {
     QVariantMap pluginOptions;
     if (!options.scope.isEmpty()) pluginOptions[QStringLiteral("scope")] = options.scope;
 
-    if (plugin->uninstall(packageId, pluginOptions, reportProgress)) {
+    const bool removed = plugin->uninstall(packageId, pluginOptions, reportProgress);
+    pm.recordOperation(QStringLiteral("remove"), packageId, plugin->id(), removed);
+
+    if (removed) {
         std::cout << green() << bold() << "Successfully removed " << text(packageId) << reset() << "\n";
         return 0;
     }
@@ -446,6 +452,8 @@ int CliHandler::handleUpgrade(const Options& options, PackageManager& pm) {
             std::cout << dim() << "  " << text(line) << reset() << "\n";
         });
 
+        pm.recordOperation(QStringLiteral("system"), QString(), QString(), success);
+
         if (success) {
             std::cout << green() << bold() << "Updates applied" << reset() << "\n";
             return 0;
@@ -462,7 +470,10 @@ int CliHandler::handleUpgrade(const Options& options, PackageManager& pm) {
     QVariantMap pluginOptions;
     if (!options.scope.isEmpty()) pluginOptions[QStringLiteral("scope")] = options.scope;
 
-    if (plugin->update(packageId, pluginOptions, reportProgress)) {
+    const bool updated = plugin->update(packageId, pluginOptions, reportProgress);
+    pm.recordOperation(QStringLiteral("update"), packageId, plugin->id(), updated);
+
+    if (updated) {
         std::cout << green() << bold() << "Successfully updated " << text(packageId) << reset() << "\n";
         return 0;
     }

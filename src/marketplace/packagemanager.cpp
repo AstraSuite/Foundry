@@ -4,6 +4,10 @@
 #include <QtConcurrent>
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QDateTime>
 #include <QFileInfo>
 #include <QStandardPaths>
 #include <QTime>
@@ -153,6 +157,57 @@ void PackageManager::setEnableAppImage(bool enable) {
     if (m_appimagePlugin) m_appimagePlugin->setEnabled(enable);
 }
 void PackageManager::setAurHelper(const QString& helper) { if (m_aurPlugin) m_aurPlugin->setAurHelper(helper); }
+
+namespace {
+constexpr int kHistoryEntryLimit = 200;
+
+QString historyFilePath() {
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/history.jsonl");
+}
+}
+
+void PackageManager::recordOperation(const QString& action, const QString& packageId, const QString& backend, bool success) {
+    QJsonObject entry;
+    entry[QStringLiteral("time")] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    entry[QStringLiteral("action")] = action;
+    entry[QStringLiteral("package")] = packageId;
+    entry[QStringLiteral("backend")] = backend;
+    entry[QStringLiteral("success")] = success;
+
+    const QString path = historyFilePath();
+    QDir().mkpath(QFileInfo(path).absolutePath());
+
+    QStringList lines;
+    QFile file(path);
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        lines = QString::fromUtf8(file.readAll()).split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+        file.close();
+    }
+
+    lines.append(QString::fromUtf8(QJsonDocument(entry).toJson(QJsonDocument::Compact)));
+    if (lines.size() > kHistoryEntryLimit) lines = lines.mid(lines.size() - kHistoryEntryLimit);
+
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        file.write(lines.join(QLatin1Char('\n')).toUtf8() + '\n');
+        file.close();
+    }
+
+    emit historyChanged();
+}
+
+QVariantList PackageManager::recentOperations(int limit) const {
+    QFile file(historyFilePath());
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return {};
+
+    const QStringList lines = QString::fromUtf8(file.readAll()).split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+
+    QVariantList operations;
+    for (qsizetype i = lines.size() - 1; i >= 0 && operations.size() < limit; --i) {
+        const QJsonDocument document = QJsonDocument::fromJson(lines.at(i).toUtf8());
+        if (document.isObject()) operations.append(document.object().toVariantMap());
+    }
+    return operations;
+}
 
 void PackageManager::setBusy(bool busy) {
     if (m_isBusy != busy) {
@@ -417,6 +472,7 @@ void PackageManager::installPackage(const QString& backend, const QString& packa
         emit currentProgressChanged();
         setStatusMessage(QString());
         appendLog(QStringLiteral("[%1] %2: %3 (%4)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : QStringLiteral("FAILED"), packageId, backend));
+        recordOperation(QStringLiteral("install"), packageId, backend, success);
         emit operationFinished(success, success ? QStringLiteral("Successfully installed ") + packageId : QStringLiteral("Failed to install ") + packageId);
     });
 
@@ -458,6 +514,7 @@ void PackageManager::updatePackage(const QString& backend, const QString& packag
         emit currentProgressChanged();
         setStatusMessage(QString());
         appendLog(QStringLiteral("[%1] %2: %3 (%4)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : QStringLiteral("FAILED"), packageId, backend));
+        recordOperation(QStringLiteral("update"), packageId, backend, success);
         emit operationFinished(success, success ? QStringLiteral("Successfully updated ") + packageId : QStringLiteral("Failed to update ") + packageId);
     });
 
@@ -496,6 +553,7 @@ void PackageManager::uninstallPackage(const QString& backend, const QString& pac
         emit currentProgressChanged();
         setStatusMessage(QString());
         appendLog(QStringLiteral("[%1] %2: %3 (%4)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : QStringLiteral("FAILED"), packageId, backend));
+        recordOperation(QStringLiteral("remove"), packageId, backend, success);
         emit operationFinished(success, success ? QStringLiteral("Successfully uninstalled ") + packageId : QStringLiteral("Failed to uninstall ") + packageId);
     });
 
@@ -635,6 +693,7 @@ void PackageManager::updateAllPackages() {
         setBusy(false);
         setStatusMessage(QString());
         appendLog(QStringLiteral("[%1] %2: System update completed").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : QStringLiteral("FAILED")));
+        recordOperation(QStringLiteral("system"), QString(), QString(), success);
         emit operationFinished(success, success ? QStringLiteral("All packages updated successfully") : QStringLiteral("Some updates could not be applied"));
         checkForUpdatesAsync();
     });

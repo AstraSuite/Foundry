@@ -97,6 +97,8 @@ public:
     Q_INVOKABLE QVariantList checkForUpdates();
     Q_INVOKABLE void checkForUpdatesAsync();
     Q_INVOKABLE void updateAllPackages();
+    Q_INVOKABLE QVariantList recentOperations(int limit = 8) const;
+    void recordOperation(const QString& action, const QString& packageId, const QString& backend, bool success);
     Q_INVOKABLE void appendLog(const QString& line);
     Q_INVOKABLE void clearLogs();
 
@@ -112,6 +114,7 @@ signals:
     void logLinesChanged();
     void currentProgressChanged();
     void pluginsChanged();
+    void historyChanged();
     void missingBackendToolsChanged();
     void operationProgress(const QString& packageId, int percent, const QString& status);
     void operationFinished(bool success, const QString& message);
