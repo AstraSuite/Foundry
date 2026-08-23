@@ -31,29 +31,25 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Quick QuickControls2 Shade
 
 qt_standard_project_setup(REQUIRES 6.5)
 
-# Custom qsb command for blob shaders
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/shaders/blob.vert.qsb
-           ${CMAKE_CURRENT_SOURCE_DIR}/shaders/blob.frag.qsb
-    COMMAND /usr/lib/qt6/bin/qsb --glsl 300es,120,150,330,450 -b -O --hlsl 50 --msl 20000 -o ${CMAKE_CURRENT_SOURCE_DIR}/shaders/blob.vert.qsb ${CMAKE_CURRENT_SOURCE_DIR}/shaders/blob.vert
-    COMMAND /usr/lib/qt6/bin/qsb --glsl 300es,120,150,330,450 -b -O --hlsl 50 --msl 20000 -o ${CMAKE_CURRENT_SOURCE_DIR}/shaders/blob.frag.qsb ${CMAKE_CURRENT_SOURCE_DIR}/shaders/blob.frag
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/shaders/blob.vert
-            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/blob.frag
-    COMMENT "Compiling QSB shaders"
-)
-
 # C++ Source files
 file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
     "src/*.cpp"
     "src/*.hpp"
 )
 
-list(APPEND PROJECT_SOURCES
-    shaders/blob.vert.qsb
-    shaders/blob.frag.qsb
-)
-
 qt_add_executable(astra ${PROJECT_SOURCES})
+
+qt_add_shaders(astra "blob_shaders"
+    BATCHABLE
+    OPTIMIZED
+    PREFIX "/"
+    GLSL "300es,120,150,330,450"
+    HLSL 50
+    MSL 20000
+    FILES
+        shaders/blob.vert
+        shaders/blob.frag
+)
 
 target_include_directories(astra PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -87,8 +83,6 @@ qt_add_resources(astra "resources"
         assets/icons/tray-dark.svg
         assets/icons/tray-light.svg
         assets/fonts/GoogleSansFlex-VariableFont_GRAD,ROND,opsz,slnt,wdth,wght.ttf
-        shaders/blob.vert.qsb
-        shaders/blob.frag.qsb
 )
 
 # Add QML files with CONFIGURE_DEPENDS
