@@ -27,11 +27,18 @@ void PackageManager::initPlugins() {
     m_aurPlugin = new AurPlugin(this);
     m_appimagePlugin = new AppImagePlugin(this);
 
-    QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
-    m_flatpakPlugin->setEnabled(settings.value(QStringLiteral("plugins/flatpak"), true).toBool());
-    m_pacmanPlugin->setEnabled(settings.value(QStringLiteral("plugins/pacman"), true).toBool());
-    m_aurPlugin->setEnabled(settings.value(QStringLiteral("plugins/aur"), true).toBool());
-    m_appimagePlugin->setEnabled(settings.value(QStringLiteral("plugins/appimage"), true).toBool());
+    QSettings legacySettings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+    const QList<QPair<QString, IPackagePlugin*>> legacyKeys{
+        {QStringLiteral("plugins/flatpak"), m_flatpakPlugin},
+        {QStringLiteral("plugins/pacman"), m_pacmanPlugin},
+        {QStringLiteral("plugins/aur"), m_aurPlugin},
+        {QStringLiteral("plugins/appimage"), m_appimagePlugin}
+    };
+    for (const auto& [key, plugin] : legacyKeys) {
+        if (!legacySettings.contains(key)) continue;
+        plugin->setEnabled(legacySettings.value(key).toBool());
+        legacySettings.remove(key);
+    }
 
     registerPlugin(m_flatpakPlugin);
     registerPlugin(m_pacmanPlugin);
@@ -43,6 +50,12 @@ void PackageManager::initPlugins() {
     connect(m_aurPlugin, &IPackagePlugin::enabledChanged, this, &PackageManager::enableAurChanged);
     connect(m_appimagePlugin, &IPackagePlugin::enabledChanged, this, &PackageManager::enableAppImageChanged);
     connect(m_aurPlugin, &IPackagePlugin::availabilityChanged, this, &PackageManager::aurHelperChanged);
+
+    const QList<IPackagePlugin*> builtinPlugins{m_flatpakPlugin, m_pacmanPlugin, m_aurPlugin, m_appimagePlugin};
+    for (IPackagePlugin* plugin : builtinPlugins) {
+        connect(plugin, &IPackagePlugin::enabledChanged, this, &PackageManager::missingBackendToolsChanged);
+        connect(plugin, &IPackagePlugin::availabilityChanged, this, &PackageManager::missingBackendToolsChanged);
+    }
 
     QStringList pluginDirs = {
         QDir::homePath() + QStringLiteral("/.config/astra/plugins"),
@@ -70,6 +83,21 @@ IPackagePlugin* PackageManager::findPlugin(const QString& backendOrId) const {
         }
     }
     return nullptr;
+}
+
+QStringList PackageManager::missingBackendTools() const {
+    QStringList missing;
+
+    if (m_pacmanPlugin && m_pacmanPlugin->isEnabled() && m_pacmanPlugin->isAvailable() &&
+        QStandardPaths::findExecutable(QStringLiteral("checkupdates")).isEmpty()) {
+        missing.append(tr("checkupdates is missing, install pacman-contrib to see Pacman updates"));
+    }
+
+    if (m_aurPlugin && m_aurPlugin->isEnabled() && !m_aurPlugin->isAvailable()) {
+        missing.append(tr("No AUR helper found, install paru or yay to manage AUR packages"));
+    }
+
+    return missing;
 }
 
 QVariantList PackageManager::getRegisteredPluginsInfo() const {
@@ -113,32 +141,16 @@ void PackageManager::setUseCaelestiaUpdate(bool enable) {
 }
 
 void PackageManager::setEnableFlatpak(bool enable) {
-    if (m_flatpakPlugin) {
-        m_flatpakPlugin->setEnabled(enable);
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
-        settings.setValue(QStringLiteral("plugins/flatpak"), enable);
-    }
+    if (m_flatpakPlugin) m_flatpakPlugin->setEnabled(enable);
 }
 void PackageManager::setEnablePacman(bool enable) {
-    if (m_pacmanPlugin) {
-        m_pacmanPlugin->setEnabled(enable);
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
-        settings.setValue(QStringLiteral("plugins/pacman"), enable);
-    }
+    if (m_pacmanPlugin) m_pacmanPlugin->setEnabled(enable);
 }
 void PackageManager::setEnableAur(bool enable) {
-    if (m_aurPlugin) {
-        m_aurPlugin->setEnabled(enable);
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
-        settings.setValue(QStringLiteral("plugins/aur"), enable);
-    }
+    if (m_aurPlugin) m_aurPlugin->setEnabled(enable);
 }
 void PackageManager::setEnableAppImage(bool enable) {
-    if (m_appimagePlugin) {
-        m_appimagePlugin->setEnabled(enable);
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
-        settings.setValue(QStringLiteral("plugins/appimage"), enable);
-    }
+    if (m_appimagePlugin) m_appimagePlugin->setEnabled(enable);
 }
 void PackageManager::setAurHelper(const QString& helper) { if (m_aurPlugin) m_aurPlugin->setAurHelper(helper); }
 

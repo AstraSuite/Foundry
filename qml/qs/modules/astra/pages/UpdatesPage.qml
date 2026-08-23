@@ -104,6 +104,43 @@ PageBase {
             }
         }
 
+        Repeater {
+            model: PackageManager.missingBackendTools
+
+            StyledRect {
+                id: hintCard
+
+                required property string modelData
+
+                width: root ? root.width : 0
+                implicitHeight: hintLayout.implicitHeight + Tokens.padding.medium * 2
+                radius: Tokens.rounding.large
+                color: Colours.palette.m3secondaryContainer
+
+                RowLayout {
+                    id: hintLayout
+
+                    anchors.fill: parent
+                    anchors.margins: Tokens.padding.medium
+                    spacing: Tokens.padding.small
+
+                    MaterialIcon {
+                        text: "info"
+                        fontStyle: Tokens.font.icon.small
+                        color: Colours.palette.m3onSecondaryContainer
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: hintCard.modelData
+                        font: Tokens.font.body.small
+                        color: Colours.palette.m3onSecondaryContainer
+                        wrapMode: Text.WordWrap
+                    }
+                }
+            }
+        }
+
         Item { width: 1; height: Tokens.padding.small }
 
         Item {
@@ -197,12 +234,15 @@ PageBase {
 
                         RowLayout {
                             Layout.alignment: Qt.AlignLeft
+                            Layout.fillWidth: true
                             spacing: Tokens.padding.small
 
                             StyledText {
+                                Layout.fillWidth: true
                                 text: cardRect.modelData.name || cardRect.modelData.id
                                 font: Tokens.font.title.medium
                                 color: Colours.palette.m3onSurface
+                                elide: Text.ElideRight
                             }
 
                             Rectangle {
