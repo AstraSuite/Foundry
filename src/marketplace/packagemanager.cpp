@@ -450,10 +450,9 @@ void PackageManager::uninstallPackage(const QString& backend, const QString& pac
 }
 
 void PackageManager::launchApp(const QString& backend, const QString& packageId, const QString& execPath) {
-    Q_UNUSED(execPath);
     IPackagePlugin* plugin = findPlugin(backend);
     if (plugin) {
-        plugin->launch(packageId);
+        plugin->launch(execPath.isEmpty() ? packageId : execPath);
     }
 }
 

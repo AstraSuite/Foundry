@@ -3,12 +3,65 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
+#include <QSet>
 #include <QUrl>
 #include <QStandardPaths>
 #include <QDebug>
 #include <QRegularExpression>
 #include <QTemporaryDir>
 #include <QTextStream>
+
+namespace {
+
+QString applicationsDirectory() {
+    return QDir::homePath() + QStringLiteral("/.local/share/applications");
+}
+
+QString binaryDirectory() {
+    return QDir::homePath() + QStringLiteral("/.local/bin");
+}
+
+QString iconDirectory() {
+    return QDir::homePath() + QStringLiteral("/.local/share/icons/hicolor/512x512/apps");
+}
+
+QString portableDirectory() {
+    return QDir::homePath() + QStringLiteral("/Applications");
+}
+
+QString slugify(const QString& value) {
+    static const QRegularExpression unsupported(QStringLiteral("[^a-z0-9_-]"));
+    QString slug = value.toLower();
+    slug.replace(unsupported, QStringLiteral("-"));
+    return slug;
+}
+
+QString resolveIcon(const QString& icon) {
+    if (icon.isEmpty()) return QString();
+    if (icon.startsWith(QLatin1Char('/'))) return QFile::exists(icon) ? icon : QString();
+
+    const QString base = iconDirectory() + QStringLiteral("/") + icon;
+    for (const QString& candidate : {base, base + QStringLiteral(".png"), base + QStringLiteral(".svg")}) {
+        if (QFile::exists(candidate)) return candidate;
+    }
+    return icon;
+}
+
+QString executableFromExecLine(QString exec) {
+    exec.remove(QLatin1Char('"'));
+    exec.remove(QStringLiteral(" %U"));
+    exec.remove(QStringLiteral(" %u"));
+    exec.remove(QStringLiteral(" %F"));
+    exec.remove(QStringLiteral(" %f"));
+    return exec.trimmed();
+}
+
+QString humanSize(qint64 bytes) {
+    if (bytes <= 0) return QString();
+    return QString::number(bytes / (1024.0 * 1024.0), 'f', 1) + QStringLiteral(" MB");
+}
+
+}
 
 AppImageInstaller::AppImageInstaller(QObject* parent)
     : QObject(parent) {}
@@ -39,12 +92,11 @@ bool AppImageInstaller::installAppImage(const QString& fileUrlOrPath) {
 
     QString appBaseName = fileInfo.completeBaseName();
 
-    QString safeAppName = appBaseName.toLower();
-    safeAppName.replace(QRegularExpression(QStringLiteral("[^a-z0-9_-]")), QStringLiteral("-"));
+    const QString safeAppName = slugify(appBaseName);
 
     setStatus(true, QStringLiteral("Installing ") + appBaseName + QStringLiteral("..."));
 
-    QString binDir = QDir::homePath() + QStringLiteral("/.local/bin");
+    const QString binDir = binaryDirectory();
     QDir().mkpath(binDir);
 
     QString destAppImagePath = binDir + QStringLiteral("/") + safeAppName + QStringLiteral(".AppImage");
@@ -98,7 +150,7 @@ bool AppImageInstaller::installAppImage(const QString& fileUrlOrPath) {
 
     QString desktopPath = generateDesktopFile(safeAppName, destAppImagePath, iconPath, displayName);
 
-    QProcess::startDetached(QStringLiteral("update-desktop-database"), {QDir::homePath() + QStringLiteral("/.local/share/applications")});
+    QProcess::startDetached(QStringLiteral("update-desktop-database"), {applicationsDirectory()});
 
     if (QFile::exists(QStringLiteral("/usr/bin/notify-send")) || QFile::exists(QStringLiteral("/bin/notify-send"))) {
         QString notifIcon = iconPath.isEmpty() ? QStringLiteral("system-software-install") : iconPath;
@@ -116,7 +168,7 @@ bool AppImageInstaller::installAppImage(const QString& fileUrlOrPath) {
 
 QString AppImageInstaller::extractIcon(const QString& tempExtractDir, const QString& appName) {
     QDir extractDir(tempExtractDir);
-    QString iconsDestDir = QDir::homePath() + QStringLiteral("/.local/share/icons/hicolor/512x512/apps");
+    const QString iconsDestDir = iconDirectory();
     QDir().mkpath(iconsDestDir);
 
     QStringList iconFilters;
@@ -152,7 +204,7 @@ QString AppImageInstaller::extractIcon(const QString& tempExtractDir, const QStr
 }
 
 QString AppImageInstaller::generateDesktopFile(const QString& appName, const QString& execPath, const QString& iconPath, const QString& displayName) {
-    QString appsDir = QDir::homePath() + QStringLiteral("/.local/share/applications");
+    const QString appsDir = applicationsDirectory();
     QDir().mkpath(appsDir);
 
     QString desktopPath = appsDir + QStringLiteral("/appimage-") + appName + QStringLiteral(".desktop");
@@ -175,82 +227,130 @@ QString AppImageInstaller::generateDesktopFile(const QString& appName, const QSt
     return desktopPath;
 }
 
+QVariantList AppImageInstaller::installedAppImages() {
+    QVariantList entries;
+    QSet<QString> seenPaths;
+
+    QDir applications(applicationsDirectory());
+    const QStringList desktopFiles = applications.entryList({QStringLiteral("appimage-*.desktop")}, QDir::Files, QDir::Name);
+    for (const QString& fileName : desktopFiles) {
+        QFile file(applications.filePath(fileName));
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) continue;
+
+        QString identifier = fileName.mid(9);
+        if (identifier.endsWith(QLatin1String(".desktop"))) identifier.chop(8);
+
+        QString name;
+        QString exec;
+        QString icon;
+        QString comment;
+
+        QTextStream stream(&file);
+        while (!stream.atEnd()) {
+            const QString line = stream.readLine().trimmed();
+            if (line.startsWith(QLatin1String("Name="))) name = line.mid(5).trimmed();
+            else if (line.startsWith(QLatin1String("Exec="))) exec = executableFromExecLine(line.mid(5).trimmed());
+            else if (line.startsWith(QLatin1String("Icon="))) icon = line.mid(5).trimmed();
+            else if (line.startsWith(QLatin1String("Comment="))) comment = line.mid(8).trimmed();
+        }
+
+        const QFileInfo executable(exec);
+
+        QVariantMap entry;
+        entry[QStringLiteral("id")] = identifier;
+        entry[QStringLiteral("name")] = name.isEmpty() ? identifier : name;
+        entry[QStringLiteral("exec")] = exec;
+        entry[QStringLiteral("path")] = exec;
+        entry[QStringLiteral("icon")] = resolveIcon(icon.isEmpty() ? identifier : icon);
+        entry[QStringLiteral("desktopFile")] = fileName;
+        entry[QStringLiteral("desktopPath")] = applications.filePath(fileName);
+        entry[QStringLiteral("summary")] = comment;
+        entry[QStringLiteral("size")] = executable.exists() ? humanSize(executable.size()) : QString();
+        entries.append(entry);
+
+        if (executable.exists()) seenPaths.insert(executable.absoluteFilePath());
+    }
+
+    for (const QString& directory : {portableDirectory(), binaryDirectory()}) {
+        QDir dir(directory);
+        if (!dir.exists()) continue;
+
+        const QStringList files = dir.entryList({QStringLiteral("*.AppImage"), QStringLiteral("*.appimage")}, QDir::Files, QDir::Name);
+        for (const QString& fileName : files) {
+            const QFileInfo info(dir.filePath(fileName));
+            if (seenPaths.contains(info.absoluteFilePath())) continue;
+            seenPaths.insert(info.absoluteFilePath());
+
+            QVariantMap entry;
+            entry[QStringLiteral("id")] = info.completeBaseName();
+            entry[QStringLiteral("name")] = info.completeBaseName();
+            entry[QStringLiteral("exec")] = info.absoluteFilePath();
+            entry[QStringLiteral("path")] = info.absoluteFilePath();
+            entry[QStringLiteral("icon")] = resolveIcon(slugify(info.completeBaseName()));
+            entry[QStringLiteral("summary")] = QString();
+            entry[QStringLiteral("size")] = humanSize(info.size());
+            entries.append(entry);
+        }
+    }
+
+    return entries;
+}
+
+QVariantMap AppImageInstaller::findInstalledAppImage(const QString& appIdentifier) {
+    if (appIdentifier.isEmpty()) return {};
+
+    QString identifier = appIdentifier;
+    if (identifier.startsWith(QLatin1String("file://"))) identifier = QUrl(identifier).toLocalFile();
+    const QString slug = slugify(identifier);
+
+    const QVariantList entries = installedAppImages();
+    const QStringList keys{QStringLiteral("desktopPath"), QStringLiteral("path"), QStringLiteral("id"), QStringLiteral("name")};
+    for (const QString& key : keys) {
+        for (const QVariant& value : entries) {
+            const QVariantMap entry = value.toMap();
+            if (entry.value(key).toString().compare(identifier, Qt::CaseInsensitive) == 0) return entry;
+        }
+    }
+
+    for (const QVariant& value : entries) {
+        const QVariantMap entry = value.toMap();
+        if (slugify(entry.value(QStringLiteral("id")).toString()) == slug) return entry;
+        if (slugify(entry.value(QStringLiteral("name")).toString()) == slug) return entry;
+    }
+
+    return {};
+}
+
 QVariantList AppImageInstaller::listInstalledAppImages() {
-    QVariantList list;
-    QString appsDir = QDir::homePath() + QStringLiteral("/.local/share/applications");
-    QDir dir(appsDir);
-
-    QStringList desktopFiles = dir.entryList({QStringLiteral("appimage-*.desktop")}, QDir::Files);
-    for (const QString& dFile : desktopFiles) {
-        QFile file(appsDir + QStringLiteral("/") + dFile);
-        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QVariantMap appMap;
-            appMap[QStringLiteral("desktopFile")] = dFile;
-            appMap[QStringLiteral("desktopPath")] = appsDir + QStringLiteral("/") + dFile;
-
-            QTextStream stream(&file);
-            while (!stream.atEnd()) {
-                QString line = stream.readLine().trimmed();
-                if (line.startsWith(QLatin1String("Name="))) {
-                    appMap[QStringLiteral("name")] = line.mid(5).trimmed();
-                } else if (line.startsWith(QLatin1String("Exec="))) {
-                    QString exec = line.mid(5).trimmed();
-                    exec.remove(QLatin1Char('"'));
-                    exec.remove(QStringLiteral(" %U"));
-                    appMap[QStringLiteral("exec")] = exec;
-                } else if (line.startsWith(QLatin1String("Icon="))) {
-                    appMap[QStringLiteral("icon")] = line.mid(5).trimmed();
-                }
-            }
-
-            QString icon = appMap.value(QStringLiteral("icon")).toString();
-            if (!icon.isEmpty() && !QFile::exists(icon)) {
-                QString iconsDir = QDir::homePath() + QStringLiteral("/.local/share/icons/hicolor/512x512/apps/");
-                if (QFile::exists(iconsDir + icon)) {
-                    appMap[QStringLiteral("icon")] = iconsDir + icon;
-                } else if (QFile::exists(iconsDir + icon + QStringLiteral(".png"))) {
-                    appMap[QStringLiteral("icon")] = iconsDir + icon + QStringLiteral(".png");
-                } else if (QFile::exists(iconsDir + icon + QStringLiteral(".svg"))) {
-                    appMap[QStringLiteral("icon")] = iconsDir + icon + QStringLiteral(".svg");
-                }
-            }
-
-            list.append(appMap);
-        }
-    }
-
-    return list;
+    return installedAppImages();
 }
 
-bool AppImageInstaller::uninstallAppImage(const QString& appName) {
-    QString safeName = appName.toLower();
-    safeName.replace(QRegularExpression(QStringLiteral("[^a-z0-9_-]")), QStringLiteral("-"));
+bool AppImageInstaller::uninstallAppImage(const QString& appIdentifier) {
+    const QVariantMap entry = findInstalledAppImage(appIdentifier);
+    if (entry.isEmpty()) return false;
 
-    QString desktopPath = QDir::homePath() + QStringLiteral("/.local/share/applications/appimage-") + safeName + QStringLiteral(".desktop");
-    QString binPath = QDir::homePath() + QStringLiteral("/.local/bin/") + safeName + QStringLiteral(".AppImage");
+    bool removed = false;
 
-    bool success = false;
-    if (QFile::exists(desktopPath)) {
-        success |= QFile::remove(desktopPath);
+    const QString executable = entry.value(QStringLiteral("path")).toString();
+    if (!executable.isEmpty() && QFile::exists(executable)) removed |= QFile::remove(executable);
+
+    const QString desktopPath = entry.value(QStringLiteral("desktopPath")).toString();
+    if (!desktopPath.isEmpty() && QFile::exists(desktopPath)) removed |= QFile::remove(desktopPath);
+
+    const QString icon = entry.value(QStringLiteral("icon")).toString();
+    if (icon.startsWith(iconDirectory()) && QFile::exists(icon)) QFile::remove(icon);
+
+    if (!desktopPath.isEmpty()) {
+        QProcess::startDetached(QStringLiteral("update-desktop-database"), {applicationsDirectory()});
     }
-    if (QFile::exists(binPath)) {
-        success |= QFile::remove(binPath);
-    }
 
-    QProcess::startDetached(QStringLiteral("update-desktop-database"), {QDir::homePath() + QStringLiteral("/.local/share/applications")});
-    return success;
+    return removed;
 }
 
-void AppImageInstaller::launchAppImage(const QString& appName) {
-    QString safeName = appName.toLower();
-    safeName.replace(QRegularExpression(QStringLiteral("[^a-z0-9_-]")), QStringLiteral("-"));
-    QString binPath = QDir::homePath() + QStringLiteral("/.local/bin/") + safeName + QStringLiteral(".AppImage");
-    if (QFile::exists(binPath)) {
-        QProcess::startDetached(binPath);
-    } else {
-        QString altBinPath = QDir::homePath() + QStringLiteral("/.local/bin/") + appName;
-        if (QFile::exists(altBinPath)) {
-            QProcess::startDetached(altBinPath);
-        }
-    }
+bool AppImageInstaller::launchAppImage(const QString& appIdentifier) {
+    const QVariantMap entry = findInstalledAppImage(appIdentifier);
+    const QString executable = entry.value(QStringLiteral("path")).toString();
+    if (executable.isEmpty() || !QFile::exists(executable)) return false;
+
+    return QProcess::startDetached(executable, {});
 }

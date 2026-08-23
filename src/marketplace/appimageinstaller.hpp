@@ -27,8 +27,11 @@ public:
 
     Q_INVOKABLE bool installAppImage(const QString& fileUrlOrPath);
     Q_INVOKABLE QVariantList listInstalledAppImages();
-    Q_INVOKABLE bool uninstallAppImage(const QString& appName);
-    Q_INVOKABLE void launchAppImage(const QString& appName);
+    Q_INVOKABLE bool uninstallAppImage(const QString& appIdentifier);
+    Q_INVOKABLE bool launchAppImage(const QString& appIdentifier);
+
+    static QVariantList installedAppImages();
+    static QVariantMap findInstalledAppImage(const QString& appIdentifier);
 
 signals:
     void isInstallingChanged();

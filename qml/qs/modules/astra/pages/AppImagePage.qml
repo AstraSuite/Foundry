@@ -206,7 +206,7 @@ PageBase {
                         inactiveOnColour: Colours.palette.m3error
                         activeOnColour: Colours.palette.m3error
                         onClicked: {
-                            AppImageInstaller.uninstallAppImage(modelData.name);
+                            AppImageInstaller.uninstallAppImage(modelData.desktopPath || modelData.path || modelData.name);
                             root.reloadAppImages();
                         }
                     }
@@ -216,7 +216,7 @@ PageBase {
                         icon: "open_in_new"
                         type: IconButton.Tonal
                         onClicked: {
-                            AppImageInstaller.launchAppImage(modelData.name);
+                            AppImageInstaller.launchAppImage(modelData.desktopPath || modelData.path || modelData.name);
                         }
                     }
                 }
