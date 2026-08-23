@@ -33,7 +33,7 @@ TrayManager::TrayManager(QObject* parent)
     m_autoUpdateFlatpak = settings.value(QStringLiteral("tray/autoUpdateFlatpak"), false).toBool();
     m_autoUpdatePacman = settings.value(QStringLiteral("tray/autoUpdatePacman"), false).toBool();
     m_autoUpdateAur = settings.value(QStringLiteral("tray/autoUpdateAur"), false).toBool();
-    m_useCaelestiaUpdate = settings.value(QStringLiteral("plugins/useCaelestiaUpdate"), QFile::exists(QStringLiteral("/usr/bin/caelestia"))).toBool();
+    m_useCaelestiaUpdate = settings.value(QStringLiteral("plugins/useCaelestiaUpdate"), !QStandardPaths::findExecutable(QStringLiteral("caelestia")).isEmpty()).toBool();
     m_autoUpdateCaelestia = settings.value(QStringLiteral("tray/autoUpdateCaelestia"), false).toBool();
 
     initTray();
@@ -60,6 +60,17 @@ void TrayManager::setPackageManager(PackageManager* pm) {
 
     if (m_pm) {
         connect(m_pm, &PackageManager::updatesCompleted, this, &TrayManager::onUpdatesRefreshed);
+        connect(m_pm, &PackageManager::useCaelestiaUpdateChanged, this, [this] {
+            const bool value = m_pm->useCaelestiaUpdate();
+            if (m_useCaelestiaUpdate == value) return;
+            m_useCaelestiaUpdate = value;
+            emit useCaelestiaUpdateChanged();
+        });
+
+        if (m_useCaelestiaUpdate != m_pm->useCaelestiaUpdate()) {
+            m_useCaelestiaUpdate = m_pm->useCaelestiaUpdate();
+            emit useCaelestiaUpdateChanged();
+        }
     }
 }
 
@@ -232,15 +243,16 @@ void TrayManager::setAutoUpdateAur(bool enabled) {
 }
 
 void TrayManager::setUseCaelestiaUpdate(bool enabled) {
-    if (m_useCaelestiaUpdate != enabled) {
-        m_useCaelestiaUpdate = enabled;
+    if (m_useCaelestiaUpdate == enabled) return;
+
+    m_useCaelestiaUpdate = enabled;
+    if (m_pm) {
+        m_pm->setUseCaelestiaUpdate(enabled);
+    } else {
         QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
         settings.setValue(QStringLiteral("plugins/useCaelestiaUpdate"), enabled);
-        emit useCaelestiaUpdateChanged();
-        if (m_pm) {
-            m_pm->setUseCaelestiaUpdate(enabled);
-        }
     }
+    emit useCaelestiaUpdateChanged();
 }
 
 void TrayManager::setAutoUpdateCaelestia(bool enabled) {

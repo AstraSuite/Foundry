@@ -40,6 +40,7 @@ class PackageManager : public QObject {
     Q_PROPERTY(QStringList logLines READ logLines NOTIFY logLinesChanged)
     Q_PROPERTY(int currentProgress READ currentProgress NOTIFY currentProgressChanged)
     Q_PROPERTY(QVariantList registeredPlugins READ getRegisteredPluginsInfo NOTIFY pluginsChanged)
+    Q_PROPERTY(QStringList missingBackendTools READ missingBackendTools NOTIFY missingBackendToolsChanged)
 
 public:
     explicit PackageManager(QObject* parent = nullptr);
@@ -56,6 +57,7 @@ public:
     QString aurHelper() const;
     QString statusMessage() const { return m_statusMessage; }
     QStringList logLines() const { return m_logLines; }
+    QStringList missingBackendTools() const;
     int currentProgress() const { return m_currentProgress; }
 
     bool isFlatpakAvailable() const;
@@ -110,6 +112,7 @@ signals:
     void logLinesChanged();
     void currentProgressChanged();
     void pluginsChanged();
+    void missingBackendToolsChanged();
     void operationProgress(const QString& packageId, int percent, const QString& status);
     void operationFinished(bool success, const QString& message);
     void searchCompleted(const QVariantList& results);
