@@ -4,10 +4,19 @@ AstraMarket is a unified package manager providing both a graphical interface an
 
 ## Requirements
 
-- Qt 6 (Core, Gui, Quick, QuickControls2, ShaderTools, Concurrent, Network, DBus, Svg)
+Build:
+
+- Qt 6.5+ (Core, Gui, Widgets, Quick, QuickControls2, ShaderTools, Concurrent, Network, DBus, Svg)
 - CMake (>= 3.19)
 - C++20 compiler
-- Supported package managers: Flatpak, Pacman, paru/yay (optional for AUR)
+
+Runtime, all optional — a source that is not installed is simply inactive:
+
+- `flatpak` for the Flatpak source
+- `pacman` for the Pacman source, plus `pacman-contrib` for `checkupdates` (without it no Pacman
+  updates are reported) and a PolicyKit authentication agent for installing and removing packages
+- `paru` or `yay` for the AUR source
+- `update-desktop-database` (`desktop-file-utils`) for AppImage desktop integration
 
 ## Installation
 
@@ -116,6 +125,10 @@ astra --help
 ## Plugins
 
 For creating and installing custom package sources or scrapers, see [PLUGINS](PLUGINS.md).
+
+## Contributing
+
+Build instructions, the test setup and the code style are described in [CONTRIBUTING](CONTRIBUTING.md).
 
 ## Acknowledgements
 
