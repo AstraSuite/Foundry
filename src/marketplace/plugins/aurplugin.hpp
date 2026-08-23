@@ -31,6 +31,8 @@ public:
     bool update(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) override;
     bool launch(const QString& packageId) override;
 
+    QString getBuildScript(const QString& packageId);
+
     static QVariantList parseForeignOutput(const QString& output);
     static QVariantList parseUpdatesOutput(const QString& output);
 

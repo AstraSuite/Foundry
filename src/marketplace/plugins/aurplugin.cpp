@@ -14,6 +14,7 @@
 #include <QNetworkReply>
 #include <QEventLoop>
 #include <QUrl>
+#include <QUrlQuery>
 
 namespace {
 constexpr int kQueryTimeoutMs = 15000;
@@ -150,6 +151,32 @@ QVariantList AurPlugin::search(const QString& query, const QVariantMap& options)
     }
     reply->deleteLater();
     return results;
+}
+
+QString AurPlugin::getBuildScript(const QString& packageId) {
+    if (packageId.isEmpty()) return QString();
+
+    QNetworkAccessManager manager;
+    QUrl url(QStringLiteral("https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD"));
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("h"), packageId);
+    url.setQuery(query);
+
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+    request.setTransferTimeout(kNetworkTimeoutMs);
+
+    QEventLoop loop;
+    QNetworkReply* reply = manager.get(request);
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    QString script;
+    if (reply->error() == QNetworkReply::NoError) {
+        script = QString::fromUtf8(reply->readAll());
+    }
+    reply->deleteLater();
+    return script;
 }
 
 QVariantList AurPlugin::parseForeignOutput(const QString& output) {

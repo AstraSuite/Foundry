@@ -648,6 +648,30 @@ void PackageManager::fetchCollectionAsync(const QString& collection, int limit) 
     }));
 }
 
+void PackageManager::fetchBuildScriptAsync(const QString& packageId) {
+    if (packageId.isEmpty() || !m_aurPlugin) return;
+
+    if (m_buildScripts.contains(packageId)) {
+        const QString cached = m_buildScripts.value(packageId);
+        QMetaObject::invokeMethod(this, [this, packageId, cached] {
+            emit buildScriptReady(packageId, cached);
+        }, Qt::QueuedConnection);
+        return;
+    }
+
+    auto* watcher = new QFutureWatcher<QString>(this);
+    connect(watcher, &QFutureWatcher<QString>::finished, this, [this, watcher, packageId] {
+        const QString script = watcher->result();
+        watcher->deleteLater();
+        if (!script.isEmpty()) m_buildScripts.insert(packageId, script);
+        emit buildScriptReady(packageId, script);
+    });
+
+    watcher->setFuture(QtConcurrent::run(&m_pluginPool, [this, packageId] {
+        return m_aurPlugin->getBuildScript(packageId);
+    }));
+}
+
 QVariantList PackageManager::checkForUpdates() {
     QVariantList results;
     const bool useCaelestia = useCaelestiaUpdate();
