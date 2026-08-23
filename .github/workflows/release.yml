@@ -66,7 +66,6 @@ jobs:
           mkdir -p "dist/${DIST_DIR}/share/applications"
           mkdir -p "dist/${DIST_DIR}/share/icons/hicolor/scalable/apps"
           mkdir -p "dist/${DIST_DIR}/share/polkit-1/actions"
-          mkdir -p "dist/${DIST_DIR}/share/polkit-1/rules.d"
 
           cp build/astra "dist/${DIST_DIR}/bin/"
           cp build/astra "dist/astra-linux-x86_64"
@@ -75,7 +74,6 @@ jobs:
           cp assets/icons/tray-dark.svg "dist/${DIST_DIR}/share/icons/hicolor/scalable/apps/"
           cp assets/icons/tray-light.svg "dist/${DIST_DIR}/share/icons/hicolor/scalable/apps/"
           cp assets/polkit/com.astramarket.pacman.policy "dist/${DIST_DIR}/share/polkit-1/actions/"
-          cp assets/polkit/10-astramarket-pacman.rules "dist/${DIST_DIR}/share/polkit-1/rules.d/"
           cp LICENSE "dist/${DIST_DIR}/"
           cp README.md "dist/${DIST_DIR}/"
 
@@ -95,7 +93,6 @@ jobs:
           $SUDO mkdir -p "${PREFIX}/share/applications"
           $SUDO mkdir -p "${PREFIX}/share/icons/hicolor/scalable/apps"
           $SUDO mkdir -p "/usr/share/polkit-1/actions"
-          $SUDO mkdir -p "/usr/share/polkit-1/rules.d"
 
           $SUDO install -Dm755 bin/astra "${PREFIX}/bin/astra"
           $SUDO install -Dm644 share/applications/astra.desktop "${PREFIX}/share/applications/astra.desktop"
@@ -103,7 +100,6 @@ jobs:
           $SUDO install -Dm644 share/icons/hicolor/scalable/apps/tray-dark.svg "${PREFIX}/share/icons/hicolor/scalable/apps/tray-dark.svg"
           $SUDO install -Dm644 share/icons/hicolor/scalable/apps/tray-light.svg "${PREFIX}/share/icons/hicolor/scalable/apps/tray-light.svg"
           $SUDO install -Dm644 share/polkit-1/actions/com.astramarket.pacman.policy "/usr/share/polkit-1/actions/com.astramarket.pacman.policy"
-          $SUDO install -Dm644 share/polkit-1/rules.d/10-astramarket-pacman.rules "/usr/share/polkit-1/rules.d/10-astramarket-pacman.rules"
 
           echo "AstraMarket installed successfully!"
           EOF

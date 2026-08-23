@@ -122,6 +122,24 @@ Show help and all available commands:
 astra --help
 ```
 
+## Privileges
+
+Pacman operations are executed through `pkexec`, so they are authorised by PolicyKit. The shipped action
+`com.astramarket.pacman.update` uses the standard defaults: administrator authentication is required, and
+the authorisation is kept for the rest of the session (`auth_admin_keep`) so a full update does not ask
+repeatedly.
+
+A PolicyKit authentication agent has to be running for these operations; without one `pkexec` cannot ask
+for credentials. Flatpak (`--user`) and AppImage operations do not require any elevated privileges.
+
+Versions up to 1.1.0 also installed `/usr/share/polkit-1/rules.d/10-astramarket-pacman.rules`, which
+allowed every member of the `wheel` group to run pacman through `pkexec` without authenticating. That file
+is no longer shipped and should be removed from existing installations:
+
+```bash
+sudo rm -f /usr/share/polkit-1/rules.d/10-astramarket-pacman.rules
+```
+
 ## Plugins
 
 For creating and installing custom package sources or scrapers, see [PLUGINS](PLUGINS.md).
