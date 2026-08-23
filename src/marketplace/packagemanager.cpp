@@ -97,7 +97,7 @@ bool PackageManager::isFlatpakAvailable() const { return m_flatpakPlugin ? m_fla
 bool PackageManager::isPacmanAvailable() const { return m_pacmanPlugin ? m_pacmanPlugin->isAvailable() : false; }
 bool PackageManager::isAurAvailable() const { return m_aurPlugin ? m_aurPlugin->isAvailable() : false; }
 bool PackageManager::isAppImageAvailable() const { return m_appimagePlugin ? m_appimagePlugin->isAvailable() : false; }
-bool PackageManager::isCaelestiaAvailable() const { return QFile::exists(QStringLiteral("/usr/bin/caelestia")); }
+bool PackageManager::isCaelestiaAvailable() const { return !QStandardPaths::findExecutable(QStringLiteral("caelestia")).isEmpty(); }
 
 bool PackageManager::useCaelestiaUpdate() const {
     QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
@@ -594,30 +594,36 @@ void PackageManager::updateAllPackages() {
         watcher->deleteLater();
         setBusy(false);
         setStatusMessage(QString());
-        appendLog(QStringLiteral("[%1] %2: System update completed").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : QStringLiteral("COMPLETED")));
-        emit operationFinished(success, success ? QStringLiteral("All packages updated successfully") : QStringLiteral("System updates completed"));
+        appendLog(QStringLiteral("[%1] %2: System update completed").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), success ? QStringLiteral("SUCCESS") : QStringLiteral("FAILED")));
+        emit operationFinished(success, success ? QStringLiteral("All packages updated successfully") : QStringLiteral("Some updates could not be applied"));
         checkForUpdatesAsync();
     });
 
-    const bool useCaelestia = useCaelestiaUpdate();
-
-    QFuture<bool> future = QtConcurrent::run([this, useCaelestia] {
-        const auto logLine = [this](const QString& line) { appendLog(line); };
-
-        if (enableFlatpak() && !QStandardPaths::findExecutable(QStringLiteral("flatpak")).isEmpty()) {
-            appendLog(QStringLiteral("[%1] Running Flatpak update (flatpak update -y)...").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss"))));
-            astra::runProcessStreaming(QStringLiteral("flatpak"), {QStringLiteral("update"), QStringLiteral("-y")}, logLine);
-        }
-
-        if (useCaelestia && !QStandardPaths::findExecutable(QStringLiteral("caelestia")).isEmpty()) {
-            appendLog(QStringLiteral("[%1] Running Caelestia update (caelestia update --noconfirm)...").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss"))));
-            astra::runProcessStreaming(QStringLiteral("caelestia"), {QStringLiteral("update"), QStringLiteral("--noconfirm")}, logLine);
-        } else if (enablePacman() && !QStandardPaths::findExecutable(QStringLiteral("pacman")).isEmpty()) {
-            appendLog(QStringLiteral("[%1] Running Pacman update (pkexec pacman -Syu --noconfirm)...").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss"))));
-            astra::runProcessStreaming(QStringLiteral("pkexec"), {QStringLiteral("pacman"), QStringLiteral("-Syu"), QStringLiteral("--noconfirm")}, logLine);
-        }
-
-        return true;
+    QFuture<bool> future = QtConcurrent::run([this] {
+        return runSystemUpdate([this](const QString& line) { appendLog(line); });
     });
     watcher->setFuture(future);
+}
+
+bool PackageManager::runSystemUpdate(const std::function<void(const QString&)>& logCallback) {
+    const auto stamped = [&logCallback](const QString& message) {
+        logCallback(QStringLiteral("[%1] %2").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), message));
+    };
+
+    bool success = true;
+
+    if (enableFlatpak() && !QStandardPaths::findExecutable(QStringLiteral("flatpak")).isEmpty()) {
+        stamped(QStringLiteral("Running Flatpak update (flatpak update -y)..."));
+        success = astra::runProcessStreaming(QStringLiteral("flatpak"), {QStringLiteral("update"), QStringLiteral("-y")}, logCallback).succeeded() && success;
+    }
+
+    if (useCaelestiaUpdate() && !QStandardPaths::findExecutable(QStringLiteral("caelestia")).isEmpty()) {
+        stamped(QStringLiteral("Running Caelestia update (caelestia update --noconfirm)..."));
+        success = astra::runProcessStreaming(QStringLiteral("caelestia"), {QStringLiteral("update"), QStringLiteral("--noconfirm")}, logCallback).succeeded() && success;
+    } else if (enablePacman() && !QStandardPaths::findExecutable(QStringLiteral("pacman")).isEmpty()) {
+        stamped(QStringLiteral("Running Pacman update (pkexec pacman -Syu --noconfirm)..."));
+        success = astra::runProcessStreaming(QStringLiteral("pkexec"), {QStringLiteral("pacman"), QStringLiteral("-Syu"), QStringLiteral("--noconfirm")}, logCallback).succeeded() && success;
+    }
+
+    return success;
 }

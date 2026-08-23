@@ -1,0 +1,31 @@
+#compdef astra
+
+local state
+local -a commands
+
+commands=(
+    'search:Search for packages across all or specific sources'
+    'install:Install a package or a local .AppImage file'
+    'remove:Uninstall a package'
+    'list:List installed packages'
+    'update:List available updates'
+    'upgrade:Apply updates, all of them or a single package'
+    'info:Display metadata and details for a package'
+    'sources:List registered package plugins and sources'
+    'gui:Launch the graphical interface'
+    'tray:Launch minimized in system tray'
+)
+
+_arguments -C \
+    '(-s --source)'{-s,--source}'[target a specific package source]:source:(Flatpak Pacman AUR AppImage)' \
+    '--scope[installation scope]:scope:(user system)' \
+    '--json[print machine readable output]' \
+    '--no-color[disable coloured output]' \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '(-v --version)'{-v,--version}'[show version]' \
+    '1: :->command' \
+    '*:: :_files'
+
+if [[ $state == command ]]; then
+    _describe -t commands 'astra command' commands
+fi

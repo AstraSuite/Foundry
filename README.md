@@ -74,7 +74,12 @@ Search across enabled package sources:
 ```bash
 astra search <query>
 astra search <query> --source <Flatpak|Pacman|AUR|AppImage>
+astra search <query> --json
 ```
+
+When no `--source` is given, the source is resolved from the package id: an ambiguous id lists the
+sources that provide it, so `astra install yay --source AUR` picks the AUR package rather than the
+repository one.
 
 Install a package:
 
@@ -97,10 +102,18 @@ List installed packages:
 astra list
 ```
 
-Check for updates:
+List available updates:
 
 ```bash
 astra update
+astra update --json
+```
+
+Apply updates, either everything or a single package:
+
+```bash
+astra upgrade
+astra upgrade <package-id>
 ```
 
 View package details:
@@ -121,6 +134,11 @@ Show help and all available commands:
 ```bash
 astra --help
 ```
+
+Output is coloured only when it goes to a terminal; `--no-color` and `NO_COLOR` disable it, and
+`--json` prints machine readable output for `search`, `list`, `update`, `info` and `sources`.
+
+Completions for bash, zsh and fish are installed alongside the binary.
 
 ## Privileges
 

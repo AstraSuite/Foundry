@@ -148,3 +148,16 @@ install(FILES assets/polkit/com.astramarket.pacman.policy
     DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions
 )
 
+install(FILES assets/completions/astra.bash
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions
+    RENAME astra
+)
+
+install(FILES assets/completions/_astra
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/zsh/site-functions
+)
+
+install(FILES assets/completions/astra.fish
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/fish/vendor_completions.d
+)
+
