@@ -421,7 +421,7 @@ bool FlatpakPlugin::install(const QString& packageId, const QVariantMap& options
         if (message.isEmpty()) return;
         const int percent = percentFromLine(line);
         progressCb(percent < 0 ? 50 : percent, message);
-    });
+    }, 0, {}, m_cancellation);
     return result.succeeded();
 }
 
@@ -439,7 +439,7 @@ bool FlatpakPlugin::uninstall(const QString& packageId, const QVariantMap& optio
         if (message.isEmpty()) return;
         const int percent = percentFromLine(line);
         progressCb(percent < 0 ? 50 : percent, message);
-    });
+    }, 0, {}, m_cancellation);
     return result.succeeded();
 }
 
@@ -458,7 +458,7 @@ bool FlatpakPlugin::update(const QString& packageId, const QVariantMap& options,
         if (message.isEmpty()) return;
         const int percent = percentFromLine(line);
         progressCb(percent < 0 ? 50 : percent, message);
-    });
+    }, 0, {}, m_cancellation);
     return result.succeeded();
 }
 

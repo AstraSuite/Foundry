@@ -105,7 +105,7 @@ PageBase {
                 icon: "system_update_alt"
                 text: qsTr("Update All")
                 type: ButtonBase.Filled
-                enabled: !PackageManager.isBusy
+                enabled: !PackageManager.isOperationRunning
                 Layout.alignment: Qt.AlignVCenter
                 onClicked: {
                     PackageManager.updateAllPackages();
@@ -284,7 +284,7 @@ PageBase {
                         icon: "system_update_alt"
                         text: qsTr("Update")
                         type: ButtonBase.Tonal
-                        enabled: !PackageManager.isBusy
+                        enabled: !PackageManager.isOperationRunning
                         Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                         onClicked: {
                             PackageManager.updatePackage(cardRect.modelData.backend, cardRect.modelData.id, cardRect.modelData.scope || "");

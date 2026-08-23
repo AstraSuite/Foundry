@@ -244,7 +244,8 @@ bool PacmanPlugin::install(const QString& packageId, const QVariantMap& options,
         {QStringLiteral("pacman"), QStringLiteral("-S"), QStringLiteral("--noconfirm"), packageId},
         [&progressCb](const QString& line) {
             if (progressCb) progressCb(50, line);
-        });
+        },
+        0, {}, m_cancellation);
 
     if (progressCb && !result.succeeded() && !result.started) {
         progressCb(0, QStringLiteral("Could not start pkexec"));
@@ -261,7 +262,8 @@ bool PacmanPlugin::uninstall(const QString& packageId, const QVariantMap& option
         {QStringLiteral("pacman"), QStringLiteral("-Rns"), QStringLiteral("--noconfirm"), packageId},
         [&progressCb](const QString& line) {
             if (progressCb) progressCb(50, line);
-        });
+        },
+        0, {}, m_cancellation);
 
     if (progressCb && !result.succeeded() && !result.started) {
         progressCb(0, QStringLiteral("Could not start pkexec"));
@@ -278,7 +280,8 @@ bool PacmanPlugin::update(const QString& packageId, const QVariantMap& options, 
         {QStringLiteral("pacman"), QStringLiteral("-Syu"), QStringLiteral("--noconfirm"), packageId},
         [&progressCb](const QString& line) {
             if (progressCb) progressCb(50, line);
-        });
+        },
+        0, {}, m_cancellation);
 
     if (progressCb && !result.started) {
         progressCb(0, QStringLiteral("Could not start pkexec"));

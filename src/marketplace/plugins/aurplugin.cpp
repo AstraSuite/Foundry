@@ -323,7 +323,7 @@ bool AurPlugin::runHelperOperation(const QStringList& operation, ProgressCallbac
 
     const astra::ProcessResult result = astra::runProcessStreaming(helper, invocation.arguments, [&progressCb](const QString& line) {
         if (progressCb) progressCb(50, line);
-    }, 0, invocation.environment);
+    }, 0, invocation.environment, m_cancellation);
 
     if (progressCb && !result.succeeded() && result.started) {
         progressCb(0, QStringLiteral("%1 exited with status %2").arg(helper, QString::number(result.exitCode)));

@@ -245,7 +245,7 @@ PageBase {
                 // Flatpak Scope SplitButton (Top)
                 SplitButton {
                     id: scopeSplitBtn
-                    visible: !root.isInstalled && !PackageManager.isBusy && root.appData && root.appData.backend === "Flatpak"
+                    visible: !root.isInstalled && !PackageManager.isOperationRunning && root.appData && root.appData.backend === "Flatpak"
                     Layout.alignment: Qt.AlignRight
                     type: SplitButton.Tonal
                     fallbackIcon: "person"
@@ -275,7 +275,7 @@ PageBase {
                 // Install Button (Directly Below SplitButton)
                 IconTextButton {
                     id: installBtn
-                    visible: !root.isInstalled && !PackageManager.isBusy
+                    visible: !root.isInstalled && !PackageManager.isOperationRunning
                     Layout.alignment: Qt.AlignRight
                     icon: "download"
                     text: qsTr("Install")
@@ -290,7 +290,7 @@ PageBase {
                 RowLayout {
                     Layout.alignment: Qt.AlignRight
                     spacing: Tokens.padding.small
-                    visible: PackageManager.isBusy
+                    visible: PackageManager.isOperationRunning
 
                     CircularIndicator {
                         running: true
@@ -312,7 +312,7 @@ PageBase {
                 RowLayout {
                     Layout.alignment: Qt.AlignRight
                     spacing: Tokens.padding.small
-                    visible: root.isInstalled && !PackageManager.isBusy
+                    visible: root.isInstalled && !PackageManager.isOperationRunning
 
                     IconButton {
                         type: ButtonBase.Text

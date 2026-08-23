@@ -25,7 +25,7 @@ PageBase {
             Layout.fillWidth: true
             implicitHeight: bannerRow.implicitHeight + Tokens.padding.medium * 2
             radius: Tokens.rounding.large
-            color: PackageManager.isBusy ? Colours.palette.m3primaryContainer : Colours.palette.m3surfaceContainer
+            color: PackageManager.isOperationRunning ? Colours.palette.m3primaryContainer : Colours.palette.m3surfaceContainer
 
             RowLayout {
                 id: bannerRow
@@ -34,7 +34,7 @@ PageBase {
                 spacing: Tokens.padding.medium
 
                 MaterialIcon {
-                    visible: !PackageManager.isBusy
+                    visible: !PackageManager.isOperationRunning
                     text: "check_circle"
                     fontStyle: Tokens.font.icon.large
                     color: Colours.palette.m3primary
@@ -46,30 +46,39 @@ PageBase {
                     spacing: 2
 
                     StyledText {
-                        text: PackageManager.isBusy
+                        text: PackageManager.isOperationRunning
                             ? (PackageManager.statusMessage || qsTr("Performing package operation..."))
                             : qsTr("System idle / Last operation completed")
                         font: Tokens.font.title.medium
-                        color: PackageManager.isBusy ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
+                        color: PackageManager.isOperationRunning ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
 
                     StyledText {
-                        text: PackageManager.isBusy
+                        text: PackageManager.isOperationRunning
                             ? qsTr("Progress: %1%").arg(PackageManager.currentProgress)
                             : qsTr("Total logged entries: %1").arg(PackageManager.logLines.length)
                         font: Tokens.font.body.small
-                        color: PackageManager.isBusy ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurfaceVariant
+                        color: PackageManager.isOperationRunning ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurfaceVariant
                     }
                 }
 
                 CircularIndicator {
-                    visible: PackageManager.isBusy
-                    running: PackageManager.isBusy
+                    visible: PackageManager.isOperationRunning
+                    running: PackageManager.isOperationRunning
                     implicitSize: 32
                     fgColour: Colours.palette.m3primary
                     Layout.alignment: Qt.AlignVCenter
+                }
+
+                IconTextButton {
+                    visible: PackageManager.isCancellable
+                    icon: "cancel"
+                    text: qsTr("Cancel")
+                    type: ButtonBase.Tonal
+                    Layout.alignment: Qt.AlignVCenter
+                    onClicked: PackageManager.cancelCurrentOperation()
                 }
 
                 IconButton {

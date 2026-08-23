@@ -41,6 +41,8 @@ class PackageManager : public QObject {
     Q_PROPERTY(int currentProgress READ currentProgress NOTIFY currentProgressChanged)
     Q_PROPERTY(QVariantList registeredPlugins READ getRegisteredPluginsInfo NOTIFY pluginsChanged)
     Q_PROPERTY(QStringList missingBackendTools READ missingBackendTools NOTIFY missingBackendToolsChanged)
+    Q_PROPERTY(bool isCancellable READ isCancellable NOTIFY isCancellableChanged)
+    Q_PROPERTY(bool isOperationRunning READ isOperationRunning NOTIFY isOperationRunningChanged)
 
 public:
     explicit PackageManager(QObject* parent = nullptr);
@@ -49,6 +51,8 @@ public:
     static PackageManager* create(QQmlEngine*, QJSEngine*);
 
     bool isBusy() const { return m_isBusy; }
+    bool isCancellable() const { return m_cancellation != nullptr; }
+    bool isOperationRunning() const { return m_operationRunning; }
     bool enableFlatpak() const;
     bool enablePacman() const;
     bool enableAur() const;
@@ -73,7 +77,7 @@ public:
     void setUseCaelestiaUpdate(bool enable);
     void setAurHelper(const QString& helper);
 
-    bool runSystemUpdate(const std::function<void(const QString&)>& logCallback);
+    bool runSystemUpdate(const std::function<void(const QString&)>& logCallback, const astra::CancellationTokenPtr& cancellation = {});
 
     void registerPlugin(IPackagePlugin* plugin);
     QList<IPackagePlugin*> plugins() const { return m_plugins; }
@@ -99,11 +103,14 @@ public:
     Q_INVOKABLE void updateAllPackages();
     Q_INVOKABLE QVariantList recentOperations(int limit = 8) const;
     void recordOperation(const QString& action, const QString& packageId, const QString& backend, bool success);
+    Q_INVOKABLE void cancelCurrentOperation();
     Q_INVOKABLE void appendLog(const QString& line);
     Q_INVOKABLE void clearLogs();
 
 signals:
     void isBusyChanged();
+    void isCancellableChanged();
+    void isOperationRunningChanged();
     void enableFlatpakChanged();
     void enablePacmanChanged();
     void enableAurChanged();
@@ -126,10 +133,14 @@ signals:
 
 private:
     void setBusy(bool busy);
+    void setOperationRunning(bool running);
+    astra::CancellationTokenPtr beginCancellableOperation(IPackagePlugin* plugin);
+    void endCancellableOperation();
     void setStatusMessage(const QString& message);
     void initPlugins();
 
     bool m_isBusy{false};
+    bool m_operationRunning{false};
     QString m_statusMessage;
     QStringList m_logLines;
     int m_currentProgress{0};
@@ -141,6 +152,8 @@ private:
     QList<IPackagePlugin*> m_plugins;
 
     QThreadPool m_pluginPool;
+    astra::CancellationTokenPtr m_cancellation;
+    bool m_lastOperationCancelled{false};
     QHash<QString, QVariantList> m_collections;
     QSet<QString> m_pendingCollections;
 

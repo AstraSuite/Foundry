@@ -1,5 +1,7 @@
 #pragma once
 
+#include "pluginprocess.hpp"
+
 #include <QString>
 #include <QVariantList>
 #include <QVariantMap>
@@ -41,6 +43,11 @@ public:
         Q_UNUSED(packageId);
         return {};
     }
+
+    void setCancellationToken(const astra::CancellationTokenPtr& cancellation) { m_cancellation = cancellation; }
+
+protected:
+    astra::CancellationTokenPtr m_cancellation;
 
 signals:
     void availabilityChanged();

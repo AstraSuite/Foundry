@@ -22,7 +22,7 @@ QProcessEnvironment parsableEnvironment() {
     return environment;
 }
 
-ProcessResult run(const QString& program, const QStringList& arguments, const ProcessLineCallback& lineCallback, int timeoutMs, bool mergeChannels, const ProcessEnvironmentOverrides& environmentOverrides) {
+ProcessResult run(const QString& program, const QStringList& arguments, const ProcessLineCallback& lineCallback, int timeoutMs, bool mergeChannels, const ProcessEnvironmentOverrides& environmentOverrides, const CancellationTokenPtr& cancellation) {
     ProcessResult result;
 
     QProcessEnvironment environment = parsableEnvironment();
@@ -81,6 +81,16 @@ ProcessResult run(const QString& program, const QStringList& arguments, const Pr
         process.waitForReadyRead(200);
         drain(false);
 
+        if (cancellation && cancellation->isCancelled()) {
+            result.cancelled = true;
+            process.terminate();
+            if (!process.waitForFinished(3000)) {
+                process.kill();
+                process.waitForFinished(1000);
+            }
+            break;
+        }
+
         if (timeoutMs > 0 && elapsed.hasExpired(timeoutMs)) {
             result.timedOut = true;
             process.kill();
@@ -92,18 +102,18 @@ ProcessResult run(const QString& program, const QStringList& arguments, const Pr
     process.waitForFinished(1000);
     drain(true);
 
-    if (!result.timedOut) result.exitCode = process.exitCode();
+    if (!result.timedOut && !result.cancelled) result.exitCode = process.exitCode();
     return result;
 }
 
 }
 
 ProcessResult runProcess(const QString& program, const QStringList& arguments, int timeoutMs) {
-    return run(program, arguments, nullptr, timeoutMs, false, {});
+    return run(program, arguments, nullptr, timeoutMs, false, {}, {});
 }
 
-ProcessResult runProcessStreaming(const QString& program, const QStringList& arguments, const ProcessLineCallback& lineCallback, int timeoutMs, const ProcessEnvironmentOverrides& environmentOverrides) {
-    return run(program, arguments, lineCallback, timeoutMs, true, environmentOverrides);
+ProcessResult runProcessStreaming(const QString& program, const QStringList& arguments, const ProcessLineCallback& lineCallback, int timeoutMs, const ProcessEnvironmentOverrides& environmentOverrides, const CancellationTokenPtr& cancellation) {
+    return run(program, arguments, lineCallback, timeoutMs, true, environmentOverrides, cancellation);
 }
 
 }
