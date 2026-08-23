@@ -6,6 +6,7 @@ import AstraMarket.Config
 import qs.components
 import qs.components.controls
 import qs.services
+import QtQuick.Controls
 import qs.modules.astra
 
 Item {
@@ -15,8 +16,37 @@ Item {
         id: nState
 
         onClose: root.close()
+        onSubPageOpened: root.openSubPages++
+        onSubPageClosed: root.openSubPages = Math.max(0, root.openSubPages - 1)
+        onCurrentPageIdxChanged: root.openSubPages = 0
+    }
+
+    Shortcut {
+        sequences: [StandardKey.Find, "Ctrl+F"]
+        onActivated: nState.focusSearchRequested()
+    }
+
+    Shortcut {
+        sequences: [StandardKey.Refresh, "Ctrl+R"]
+        onActivated: nState.refreshRequested()
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: root.openSubPages > 0
+        onActivated: nState.closeSubPage()
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+1", "Ctrl+2", "Ctrl+3", "Ctrl+4", "Ctrl+5", "Ctrl+6"]
+        onActivated: seq => {
+            const index = parseInt(seq.toString().slice(-1), 10) - 1;
+            if (index >= 0 && index < PageRegistry.pages.length)
+                nState.currentPageIdx = index;
+        }
     }
     property color blobColour: Colours.tPalette.m3surfaceContainerLow
+    property int openSubPages: 0
 
     signal close
 

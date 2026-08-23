@@ -126,6 +126,22 @@ PageBase {
         spacing: Tokens.spacing.extraSmall / 2
 
         Connections {
+            target: root.nState
+
+            function onFocusSearchRequested(): void {
+                searchBar.forceActiveFocus();
+                searchBar.selectAll();
+            }
+
+            function onRefreshRequested(): void {
+                if (root.hasActiveQuery)
+                    root.refreshSearch();
+                else
+                    root.loadHomeFeed();
+            }
+        }
+
+        Connections {
             target: PackageManager
             function onSearchCompleted(results): void {
                 root.packagesList = results ? results : [];
@@ -145,6 +161,8 @@ PageBase {
             spacing: Tokens.padding.medium
 
             SearchBar {
+                id: searchBar
+
                 Layout.fillWidth: true
                 placeholderText: qsTr("Search Flatpak, Pacman, AUR...")
                 onTextChanged: {

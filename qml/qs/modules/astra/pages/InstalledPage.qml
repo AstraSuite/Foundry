@@ -45,6 +45,13 @@ PageBase {
 
     data: [
         Connections {
+            target: root.nState
+
+            function onRefreshRequested(): void {
+                root.refreshList();
+            }
+        },
+        Connections {
             target: PackageManager
             function onInstalledCompleted(results): void {
                 root.installedList = results ? results : [];
