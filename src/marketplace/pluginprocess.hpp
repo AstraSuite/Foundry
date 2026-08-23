@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QMap>
 #include <QString>
 #include <QStringList>
 #include <functional>
@@ -18,7 +19,9 @@ struct ProcessResult {
 
 using ProcessLineCallback = std::function<void(const QString& line)>;
 
+using ProcessEnvironmentOverrides = QMap<QString, QString>;
+
 ProcessResult runProcess(const QString& program, const QStringList& arguments, int timeoutMs = 15000);
-ProcessResult runProcessStreaming(const QString& program, const QStringList& arguments, const ProcessLineCallback& lineCallback, int timeoutMs = 0);
+ProcessResult runProcessStreaming(const QString& program, const QStringList& arguments, const ProcessLineCallback& lineCallback, int timeoutMs = 0, const ProcessEnvironmentOverrides& environmentOverrides = {});
 
 }
