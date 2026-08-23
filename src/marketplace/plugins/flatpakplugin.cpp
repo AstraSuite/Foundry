@@ -342,6 +342,159 @@ QVariantList FlatpakPlugin::getUpdates() {
     return results;
 }
 
+QString FlatpakPlugin::formatBytes(qint64 bytes) {
+    if (bytes <= 0) return QString();
+
+    static const QStringList units{QStringLiteral("KB"), QStringLiteral("MB"), QStringLiteral("GB")};
+    double value = bytes / 1024.0;
+    int unit = 0;
+    while (value >= 1024.0 && unit + 1 < units.size()) {
+        value /= 1024.0;
+        ++unit;
+    }
+    return QString::number(value, 'f', value < 10 ? 1 : 0) + QLatin1Char(' ') + units.at(unit);
+}
+
+namespace {
+
+QByteArray httpGet(const QUrl& url, int timeoutMs) {
+    QNetworkAccessManager manager;
+
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setTransferTimeout(timeoutMs);
+
+    QEventLoop loop;
+    QNetworkReply* reply = manager.get(request);
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    QByteArray payload;
+    if (reply->error() == QNetworkReply::NoError) payload = reply->readAll();
+    reply->deleteLater();
+    return payload;
+}
+
+int flaggedContentCategories(const QJsonObject& details) {
+    for (const QString& locale : details.keys()) {
+        const QJsonArray categories = details.value(locale).toObject().value(QStringLiteral("categories")).toArray();
+        if (categories.isEmpty()) continue;
+
+        int flagged = 0;
+        for (const QJsonValue& value : categories) {
+            if (value.toObject().value(QStringLiteral("level")).toString() != QStringLiteral("none")) ++flagged;
+        }
+        return flagged;
+    }
+    return -1;
+}
+
+void appendPermission(QVariantList& entries, const QString& label, const QString& icon, bool sensitive) {
+    for (const QVariant& value : entries) {
+        if (value.toMap().value(QStringLiteral("label")).toString() == label) return;
+    }
+
+    QVariantMap entry;
+    entry[QStringLiteral("label")] = label;
+    entry[QStringLiteral("icon")] = icon;
+    entry[QStringLiteral("sensitive")] = sensitive;
+    entries.append(entry);
+}
+
+void appendSharedPermission(QVariantList& entries, const QString& value) {
+    if (value == QStringLiteral("network")) appendPermission(entries, QObject::tr("Network access"), QStringLiteral("public"), false);
+}
+
+void appendSocketPermission(QVariantList& entries, const QString& value) {
+    if (value == QStringLiteral("x11")) appendPermission(entries, QObject::tr("Legacy X11 windowing system"), QStringLiteral("desktop_windows"), true);
+    else if (value == QStringLiteral("wayland")) appendPermission(entries, QObject::tr("Wayland windowing system"), QStringLiteral("desktop_windows"), false);
+    else if (value == QStringLiteral("fallback-x11")) appendPermission(entries, QObject::tr("X11 windowing system as fallback"), QStringLiteral("desktop_windows"), false);
+    else if (value == QStringLiteral("pulseaudio")) appendPermission(entries, QObject::tr("Audio"), QStringLiteral("volume_up"), false);
+    else if (value == QStringLiteral("session-bus")) appendPermission(entries, QObject::tr("Full session bus access"), QStringLiteral("hub"), true);
+    else if (value == QStringLiteral("system-bus")) appendPermission(entries, QObject::tr("Full system bus access"), QStringLiteral("hub"), true);
+    else if (value == QStringLiteral("ssh-auth")) appendPermission(entries, QObject::tr("SSH agent"), QStringLiteral("key"), true);
+    else if (value == QStringLiteral("gpg-agent")) appendPermission(entries, QObject::tr("GPG agent"), QStringLiteral("key"), true);
+    else if (value == QStringLiteral("cups")) appendPermission(entries, QObject::tr("Printing"), QStringLiteral("print"), false);
+}
+
+void appendDevicePermission(QVariantList& entries, const QString& value) {
+    if (value == QStringLiteral("all")) appendPermission(entries, QObject::tr("All devices"), QStringLiteral("devices_other"), true);
+    else if (value == QStringLiteral("dri")) appendPermission(entries, QObject::tr("GPU acceleration"), QStringLiteral("memory"), false);
+    else if (value == QStringLiteral("input")) appendPermission(entries, QObject::tr("Input devices"), QStringLiteral("keyboard"), false);
+    else if (value == QStringLiteral("kvm")) appendPermission(entries, QObject::tr("Virtual machines"), QStringLiteral("developer_board"), true);
+    else if (value == QStringLiteral("shm")) appendPermission(entries, QObject::tr("Shared memory"), QStringLiteral("memory"), false);
+}
+
+void appendFilesystemPermission(QVariantList& entries, const QString& value) {
+    QString path = value;
+    bool readOnly = false;
+    if (path.endsWith(QStringLiteral(":ro"))) {
+        path.chop(3);
+        readOnly = true;
+    } else if (path.endsWith(QStringLiteral(":rw")) || path.endsWith(QStringLiteral(":create"))) {
+        path = path.section(QLatin1Char(':'), 0, 0);
+    }
+
+    if (path == QStringLiteral("host")) {
+        appendPermission(entries, readOnly ? QObject::tr("All system files, read only") : QObject::tr("All system files"), QStringLiteral("folder_open"), !readOnly);
+    } else if (path == QStringLiteral("host-os")) {
+        appendPermission(entries, QObject::tr("System libraries and binaries"), QStringLiteral("folder_open"), true);
+    } else if (path == QStringLiteral("host-etc")) {
+        appendPermission(entries, QObject::tr("System configuration in /etc"), QStringLiteral("folder_open"), true);
+    } else if (path == QStringLiteral("home")) {
+        appendPermission(entries, readOnly ? QObject::tr("Your home folder, read only") : QObject::tr("Your home folder"), QStringLiteral("home"), !readOnly);
+    } else if (path.startsWith(QStringLiteral("xdg-"))) {
+        appendPermission(entries, QObject::tr("Folder: %1").arg(path.mid(4)), QStringLiteral("folder"), false);
+    } else if (!path.isEmpty()) {
+        appendPermission(entries, QObject::tr("Path: %1").arg(path), QStringLiteral("folder"), !readOnly && !path.startsWith(QLatin1Char('~')));
+    }
+}
+
+}
+
+QVariantList FlatpakPlugin::permissionEntries(const QJsonObject& permissions) {
+    QVariantList entries;
+
+    for (const QJsonValue& value : permissions.value(QStringLiteral("shared")).toArray()) {
+        appendSharedPermission(entries, value.toString());
+    }
+    for (const QJsonValue& value : permissions.value(QStringLiteral("sockets")).toArray()) {
+        appendSocketPermission(entries, value.toString());
+    }
+    for (const QJsonValue& value : permissions.value(QStringLiteral("devices")).toArray()) {
+        appendDevicePermission(entries, value.toString());
+    }
+    for (const QJsonValue& value : permissions.value(QStringLiteral("filesystems")).toArray()) {
+        appendFilesystemPermission(entries, value.toString());
+    }
+
+    return entries;
+}
+
+QVariantList FlatpakPlugin::parseLocalPermissions(const QString& output) {
+    QVariantList entries;
+
+    const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    for (const QString& line : lines) {
+        const QString trimmed = line.trimmed();
+        const qsizetype separator = trimmed.indexOf(QLatin1Char('='));
+        if (separator <= 0) continue;
+
+        const QString key = trimmed.left(separator);
+        const QStringList values = trimmed.mid(separator + 1).split(QLatin1Char(';'), Qt::SkipEmptyParts);
+
+        for (const QString& value : values) {
+            if (key == QStringLiteral("shared")) appendSharedPermission(entries, value);
+            else if (key == QStringLiteral("sockets")) appendSocketPermission(entries, value);
+            else if (key == QStringLiteral("devices")) appendDevicePermission(entries, value);
+            else if (key == QStringLiteral("filesystems")) appendFilesystemPermission(entries, value);
+        }
+    }
+
+    return entries;
+}
+
 QVariantMap FlatpakPlugin::getDetails(const QString& packageId) {
     QVariantMap map;
     map[QStringLiteral("id")] = packageId;
@@ -401,9 +554,55 @@ QVariantMap FlatpakPlugin::getDetails(const QString& packageId) {
                 }
                 map[QStringLiteral("screenshots")] = shots;
             }
+
+            const int flagged = flaggedContentCategories(obj.value(QStringLiteral("content_rating_details")).toObject());
+            if (flagged >= 0) map[QStringLiteral("contentRatingFlags")] = flagged;
         }
     }
     reply->deleteLater();
+
+    const QJsonDocument summary = QJsonDocument::fromJson(
+        httpGet(QUrl(QStringLiteral("https://flathub.org/api/v2/summary/") + packageId), kDetailsTimeoutMs));
+    if (summary.isObject()) {
+        const QJsonObject root = summary.object();
+        const QString downloadSize = formatBytes(root.value(QStringLiteral("download_size")).toInteger());
+        const QString installedSize = formatBytes(root.value(QStringLiteral("installed_size")).toInteger());
+        if (!downloadSize.isEmpty()) map[QStringLiteral("downloadSize")] = downloadSize;
+        if (!installedSize.isEmpty()) map[QStringLiteral("installedSize")] = installedSize;
+
+        const QJsonObject metadata = root.value(QStringLiteral("metadata")).toObject();
+        const QVariantList permissions = permissionEntries(metadata.value(QStringLiteral("permissions")).toObject());
+        if (!permissions.isEmpty()) map[QStringLiteral("permissions")] = permissions;
+
+        const QString runtime = metadata.value(QStringLiteral("runtimeName")).toString();
+        if (!runtime.isEmpty()) map[QStringLiteral("runtime")] = runtime;
+    }
+
+    if (map.value(QStringLiteral("permissions")).toList().isEmpty()) {
+        const astra::ProcessResult local = astra::runProcess(
+            QStringLiteral("flatpak"), {QStringLiteral("info"), QStringLiteral("--show-permissions"), packageId}, kQueryTimeoutMs);
+        if (local.succeeded()) {
+            const QVariantList permissions = parseLocalPermissions(local.output);
+            if (!permissions.isEmpty()) map[QStringLiteral("permissions")] = permissions;
+        }
+    }
+
+    const QJsonDocument stats = QJsonDocument::fromJson(
+        httpGet(QUrl(QStringLiteral("https://flathub.org/api/v2/stats/") + packageId), kSearchTimeoutMs));
+    if (stats.isObject()) {
+        const QJsonObject root = stats.object();
+        const qint64 total = root.value(QStringLiteral("installs_total")).toInteger();
+        const qint64 lastMonth = root.value(QStringLiteral("installs_last_month")).toInteger();
+        if (total > 0) map[QStringLiteral("installsTotal")] = total;
+        if (lastMonth > 0) map[QStringLiteral("installsLastMonth")] = lastMonth;
+    }
+
+    const QJsonDocument verification = QJsonDocument::fromJson(
+        httpGet(QUrl(QStringLiteral("https://flathub.org/api/v2/verification/") + packageId + QStringLiteral("/status")), kSearchTimeoutMs));
+    if (verification.isObject() && verification.object().contains(QStringLiteral("verified"))) {
+        map[QStringLiteral("verified")] = verification.object().value(QStringLiteral("verified")).toBool();
+    }
+
     return map;
 }
 

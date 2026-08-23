@@ -1,6 +1,7 @@
 #pragma once
 
 #include "packageplugin.hpp"
+#include <QJsonObject>
 #include <QSet>
 #include <QSettings>
 
@@ -31,6 +32,10 @@ public:
     QList<QVariantMap> getInstallSources(const QString& packageId) override;
 
     QVariantList getCollection(const QString& collection, int limit);
+
+    static QVariantList permissionEntries(const QJsonObject& permissions);
+    static QVariantList parseLocalPermissions(const QString& output);
+    static QString formatBytes(qint64 bytes);
 
     static QString scopeArgument(const QString& scope);
     static QVariantList parseCollectionHits(const QByteArray& payload, QSet<QString>& seen);
