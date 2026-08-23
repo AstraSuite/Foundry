@@ -20,6 +20,18 @@ PageBase {
     property bool isInstalled: false
     property var infoMap: null
     readonly property var screenshotsList: (root.infoMap && root.infoMap.screenshots) ? root.infoMap.screenshots : []
+    readonly property string detailUrl: (root.infoMap && (root.infoMap.url || root.infoMap.homepage)) ? (root.infoMap.url || root.infoMap.homepage) : ""
+    readonly property string detailLicenses: (root.infoMap && (root.infoMap.licenses || root.infoMap.license)) ? (root.infoMap.licenses || root.infoMap.license) : ""
+    readonly property string detailInstalledSize: (root.infoMap && (root.infoMap.installedSize || root.infoMap.size)) ? (root.infoMap.installedSize || root.infoMap.size) : ""
+    readonly property string detailDownloadSize: (root.infoMap && root.infoMap.downloadSize) ? root.infoMap.downloadSize : ""
+    readonly property string detailBuildDate: (root.infoMap && root.infoMap.buildDate) ? root.infoMap.buildDate : ""
+    readonly property string detailInstallReason: (root.infoMap && root.infoMap.installReason) ? root.infoMap.installReason : ""
+    readonly property string detailProvides: (root.infoMap && root.infoMap.provides) ? root.infoMap.provides : ""
+    readonly property string detailMaintainer: (root.infoMap && root.infoMap.developer) ? root.infoMap.developer : ""
+    readonly property int detailVotes: (root.infoMap && root.infoMap.votes) ? root.infoMap.votes : 0
+    readonly property real detailPopularity: (root.infoMap && root.infoMap.popularity) ? root.infoMap.popularity : 0
+    readonly property bool detailOutOfDate: !!(root.infoMap && root.infoMap.outOfDate)
+    readonly property bool detailOrphaned: !!(root.infoMap && root.infoMap.orphaned)
     readonly property var dependsList: (root.infoMap && root.infoMap.depends) ? root.infoMap.depends : []
     readonly property var requiredByList: (root.infoMap && root.infoMap.requiredBy) ? root.infoMap.requiredBy : []
 
@@ -654,45 +666,124 @@ PageBase {
                     }
 
                     StyledText {
+                        visible: root.detailInstalledSize !== ""
                         text: qsTr("Installed Size")
                         font: Tokens.font.label.large
                         color: Colours.palette.m3onSurfaceVariant
                     }
                     StyledText {
-                        text: (root.infoMap && root.infoMap.installedSize) ? root.infoMap.installedSize : "N/A"
+                        visible: root.detailInstalledSize !== ""
+                        text: root.detailInstalledSize
                         font: Tokens.font.body.medium
                         color: Colours.palette.m3onSurface
                     }
 
                     StyledText {
+                        visible: root.detailDownloadSize !== ""
+                        text: qsTr("Download Size")
+                        font: Tokens.font.label.large
+                        color: Colours.palette.m3onSurfaceVariant
+                    }
+                    StyledText {
+                        visible: root.detailDownloadSize !== ""
+                        text: root.detailDownloadSize
+                        font: Tokens.font.body.medium
+                        color: Colours.palette.m3onSurface
+                    }
+
+                    StyledText {
+                        visible: root.detailBuildDate !== ""
                         text: qsTr("Build Date")
                         font: Tokens.font.label.large
                         color: Colours.palette.m3onSurfaceVariant
                     }
                     StyledText {
-                        text: (root.infoMap && root.infoMap.buildDate) ? root.infoMap.buildDate : "N/A"
+                        visible: root.detailBuildDate !== ""
+                        text: root.detailBuildDate
                         font: Tokens.font.body.medium
                         color: Colours.palette.m3onSurface
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
                     }
 
                     StyledText {
+                        visible: root.detailInstallReason !== ""
                         text: qsTr("Install Reason")
                         font: Tokens.font.label.large
                         color: Colours.palette.m3onSurfaceVariant
                     }
                     StyledText {
-                        text: (root.infoMap && root.infoMap.installReason) ? root.infoMap.installReason : "Explicitly installed"
+                        visible: root.detailInstallReason !== ""
+                        text: root.detailInstallReason
+                        font: Tokens.font.body.medium
+                        color: Colours.palette.m3onSurface
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+
+                    StyledText {
+                        visible: root.detailVotes > 0
+                        text: qsTr("Votes")
+                        font: Tokens.font.label.large
+                        color: Colours.palette.m3onSurfaceVariant
+                    }
+                    StyledText {
+                        visible: root.detailVotes > 0
+                        text: root.detailVotes
                         font: Tokens.font.body.medium
                         color: Colours.palette.m3onSurface
                     }
 
                     StyledText {
+                        visible: root.detailPopularity > 0
+                        text: qsTr("Popularity")
+                        font: Tokens.font.label.large
+                        color: Colours.palette.m3onSurfaceVariant
+                    }
+                    StyledText {
+                        visible: root.detailPopularity > 0
+                        text: root.detailPopularity.toFixed(2)
+                        font: Tokens.font.body.medium
+                        color: Colours.palette.m3onSurface
+                    }
+
+                    StyledText {
+                        visible: root.detailMaintainer !== "" || root.detailOrphaned
+                        text: root.appData && root.appData.backend === "AUR" ? qsTr("Maintainer") : qsTr("Packager")
+                        font: Tokens.font.label.large
+                        color: Colours.palette.m3onSurfaceVariant
+                    }
+                    StyledText {
+                        visible: root.detailMaintainer !== "" || root.detailOrphaned
+                        text: root.detailMaintainer !== "" ? root.detailMaintainer : qsTr("Orphaned")
+                        font: Tokens.font.body.medium
+                        color: root.detailMaintainer !== "" ? Colours.palette.m3onSurface : Colours.palette.m3error
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+
+                    StyledText {
+                        visible: root.detailOutOfDate
+                        text: qsTr("Status")
+                        font: Tokens.font.label.large
+                        color: Colours.palette.m3onSurfaceVariant
+                    }
+                    StyledText {
+                        visible: root.detailOutOfDate
+                        text: qsTr("Flagged out of date")
+                        font: Tokens.font.body.medium
+                        color: Colours.palette.m3error
+                    }
+
+                    StyledText {
+                        visible: root.detailUrl !== ""
                         text: qsTr("URL")
                         font: Tokens.font.label.large
                         color: Colours.palette.m3onSurfaceVariant
                     }
                     StyledText {
-                        text: (root.infoMap && root.infoMap.url) ? root.infoMap.url : "N/A"
+                        visible: root.detailUrl !== ""
+                        text: root.detailUrl
                         font: Tokens.font.body.medium
                         color: Colours.palette.m3primary
                         elide: Text.ElideRight
@@ -701,32 +792,38 @@ PageBase {
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (root.infoMap && root.infoMap.url) Qt.openUrlExternally(root.infoMap.url);
-                            }
+                            onClicked: Qt.openUrlExternally(root.detailUrl)
                         }
                     }
 
                     StyledText {
+                        visible: root.detailLicenses !== ""
                         text: qsTr("Licenses")
                         font: Tokens.font.label.large
                         color: Colours.palette.m3onSurfaceVariant
                     }
                     StyledText {
-                        text: (root.infoMap && root.infoMap.licenses) ? root.infoMap.licenses : "Proprietary / Open Source"
+                        visible: root.detailLicenses !== ""
+                        text: root.detailLicenses
                         font: Tokens.font.body.medium
                         color: Colours.palette.m3onSurface
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
                     }
 
                     StyledText {
+                        visible: root.detailProvides !== ""
                         text: qsTr("Provides")
                         font: Tokens.font.label.large
                         color: Colours.palette.m3onSurfaceVariant
                     }
                     StyledText {
-                        text: (root.infoMap && root.infoMap.provides) ? root.infoMap.provides : (root.appData ? root.appData.id : "N/A")
+                        visible: root.detailProvides !== ""
+                        text: root.detailProvides
                         font: Tokens.font.body.medium
                         color: Colours.palette.m3onSurface
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
                     }
                 }
 
