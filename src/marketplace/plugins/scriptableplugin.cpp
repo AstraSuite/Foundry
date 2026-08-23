@@ -1,10 +1,17 @@
 #include "scriptableplugin.hpp"
-#include <QFile>
 #include <QDir>
+#include <QElapsedTimer>
+#include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QJsonArray>
 #include <QProcess>
+#include <QRegularExpression>
+#include <QStandardPaths>
+
+namespace {
+constexpr int kOperationTimeoutMs = 3600000;
+}
 
 ScriptablePlugin::ScriptablePlugin(const QString& manifestPath, QObject* parent)
     : IPackagePlugin(parent), m_manifestPath(manifestPath) {
@@ -32,7 +39,9 @@ ScriptablePlugin::ScriptablePlugin(const QString& manifestPath, QObject* parent)
 
             QString checkBin = obj.value(QStringLiteral("requiredBinary")).toString();
             if (!checkBin.isEmpty()) {
-                m_isAvailable = QFile::exists(checkBin) || QFile::exists(QStringLiteral("/usr/bin/") + checkBin);
+                m_isAvailable = checkBin.contains(QLatin1Char('/'))
+                    ? QFile::exists(checkBin)
+                    : !QStandardPaths::findExecutable(checkBin).isEmpty();
             }
         }
     }
@@ -48,27 +57,94 @@ void ScriptablePlugin::setEnabled(bool enabled) {
     }
 }
 
-QByteArray ScriptablePlugin::runCommand(const QString& cmdTemplate, const QMap<QString, QString>& vars, ProgressCallback progressCb) {
-    if (cmdTemplate.isEmpty()) return QByteArray();
+QStringList ScriptablePlugin::buildShellArguments(const QString& cmdTemplate, const QMap<QString, QString>& vars) {
+    static const QRegularExpression placeholder(QStringLiteral(R"(\$\{([A-Za-z_][A-Za-z0-9_]*)\})"));
 
-    QString cmd = cmdTemplate;
-    for (auto it = vars.begin(); it != vars.end(); ++it) {
-        cmd.replace(QLatin1String("${") + it.key() + QLatin1String("}"), it.value());
+    QString script;
+    QStringList positional;
+    QMap<QString, int> indices;
+    qsizetype cursor = 0;
+
+    QRegularExpressionMatchIterator it = placeholder.globalMatch(cmdTemplate);
+    while (it.hasNext()) {
+        const QRegularExpressionMatch match = it.next();
+        script += cmdTemplate.mid(cursor, match.capturedStart() - cursor);
+
+        const QString name = match.captured(1);
+        int index = indices.value(name, 0);
+        if (index == 0) {
+            positional.append(vars.value(name));
+            index = positional.size();
+            indices.insert(name, index);
+        }
+
+        script += QStringLiteral("${") + QString::number(index) + QStringLiteral("}");
+        cursor = match.capturedEnd();
     }
+    script += cmdTemplate.mid(cursor);
+
+    QStringList args{QStringLiteral("-c"), script, QStringLiteral("astra-plugin")};
+    args.append(positional);
+    return args;
+}
+
+ScriptablePlugin::ScriptResult ScriptablePlugin::runCommand(const QString& cmdTemplate, const QMap<QString, QString>& vars, ProgressCallback progressCb, int timeoutMs) {
+    ScriptResult result;
+    if (cmdTemplate.isEmpty()) return result;
 
     QProcess proc;
     proc.setWorkingDirectory(m_baseDir);
-
-    if (progressCb) {
-        QObject::connect(&proc, &QProcess::readyReadStandardOutput, [&proc, &progressCb]() {
-            QString line = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-            progressCb(50, line);
-        });
+    proc.start(QStringLiteral("/bin/sh"), buildShellArguments(cmdTemplate, vars));
+    if (!proc.waitForStarted(5000)) {
+        proc.kill();
+        proc.waitForFinished(1000);
+        return result;
     }
 
-    proc.start(QStringLiteral("/bin/sh"), {QStringLiteral("-c"), cmd});
-    proc.waitForFinished(10000);
-    return proc.readAllStandardOutput();
+    QElapsedTimer elapsed;
+    elapsed.start();
+    QByteArray pending;
+
+    auto drain = [&](bool flush) {
+        const QByteArray chunk = proc.readAllStandardOutput();
+        if (!chunk.isEmpty()) {
+            result.output.append(chunk);
+            if (progressCb) pending.append(chunk);
+        }
+        result.error.append(proc.readAllStandardError());
+
+        if (!progressCb) return;
+        while (true) {
+            const qsizetype breakAt = pending.indexOf('\n');
+            if (breakAt < 0) break;
+            const QString line = QString::fromUtf8(pending.left(breakAt)).trimmed();
+            pending.remove(0, breakAt + 1);
+            if (!line.isEmpty()) progressCb(50, line);
+        }
+        if (flush && !pending.isEmpty()) {
+            const QString line = QString::fromUtf8(pending).trimmed();
+            pending.clear();
+            if (!line.isEmpty()) progressCb(50, line);
+        }
+    };
+
+    while (proc.state() == QProcess::Running) {
+        proc.waitForReadyRead(200);
+        drain(false);
+
+        if (timeoutMs > 0 && elapsed.hasExpired(timeoutMs)) {
+            result.timedOut = true;
+            proc.kill();
+            proc.waitForFinished(1000);
+            break;
+        }
+    }
+
+    proc.waitForFinished(1000);
+    drain(true);
+
+    result.exitCode = result.timedOut ? -1 : proc.exitCode();
+    return result;
 }
 
 QVariantList ScriptablePlugin::search(const QString& query, const QVariantMap& options) {
@@ -78,9 +154,9 @@ QVariantList ScriptablePlugin::search(const QString& query, const QVariantMap& o
 
     QMap<QString, QString> vars;
     vars[QStringLiteral("QUERY")] = query;
-    QByteArray out = runCommand(m_searchCmd, vars);
+    const ScriptResult result = runCommand(m_searchCmd, vars);
 
-    QJsonDocument doc = QJsonDocument::fromJson(out);
+    QJsonDocument doc = QJsonDocument::fromJson(result.output);
     if (doc.isArray()) {
         for (const QJsonValue& val : doc.array()) {
             if (val.isObject()) {
@@ -98,8 +174,8 @@ QVariantList ScriptablePlugin::getInstalled() {
     QVariantList results;
     if (!m_enabled || m_listCmd.isEmpty()) return results;
 
-    QByteArray out = runCommand(m_listCmd, {});
-    QJsonDocument doc = QJsonDocument::fromJson(out);
+    const ScriptResult result = runCommand(m_listCmd, {});
+    QJsonDocument doc = QJsonDocument::fromJson(result.output);
     if (doc.isArray()) {
         for (const QJsonValue& val : doc.array()) {
             if (val.isObject()) {
@@ -117,8 +193,8 @@ QVariantList ScriptablePlugin::getUpdates() {
     QVariantList results;
     if (!m_enabled || m_updatesCmd.isEmpty()) return results;
 
-    QByteArray out = runCommand(m_updatesCmd, {});
-    QJsonDocument doc = QJsonDocument::fromJson(out);
+    const ScriptResult result = runCommand(m_updatesCmd, {});
+    QJsonDocument doc = QJsonDocument::fromJson(result.output);
     if (doc.isArray()) {
         for (const QJsonValue& val : doc.array()) {
             if (val.isObject()) {
@@ -141,8 +217,8 @@ QVariantMap ScriptablePlugin::getDetails(const QString& packageId) {
 
     QMap<QString, QString> vars;
     vars[QStringLiteral("ID")] = packageId;
-    QByteArray out = runCommand(m_detailsCmd, vars);
-    QJsonDocument doc = QJsonDocument::fromJson(out);
+    const ScriptResult result = runCommand(m_detailsCmd, vars);
+    QJsonDocument doc = QJsonDocument::fromJson(result.output);
     if (doc.isObject()) {
         QVariantMap parsed = doc.object().toVariantMap();
         for (auto it = parsed.begin(); it != parsed.end(); ++it) {
@@ -159,8 +235,7 @@ bool ScriptablePlugin::install(const QString& packageId, const QVariantMap& opti
     for (auto it = options.begin(); it != options.end(); ++it) {
         vars[it.key().toUpper()] = it.value().toString();
     }
-    runCommand(m_installCmd, vars, progressCb);
-    return true;
+    return runCommand(m_installCmd, vars, progressCb, kOperationTimeoutMs).exitCode == 0;
 }
 
 bool ScriptablePlugin::uninstall(const QString& packageId, const QVariantMap& options, ProgressCallback progressCb) {
@@ -170,16 +245,14 @@ bool ScriptablePlugin::uninstall(const QString& packageId, const QVariantMap& op
     for (auto it = options.begin(); it != options.end(); ++it) {
         vars[it.key().toUpper()] = it.value().toString();
     }
-    runCommand(m_uninstallCmd, vars, progressCb);
-    return true;
+    return runCommand(m_uninstallCmd, vars, progressCb, kOperationTimeoutMs).exitCode == 0;
 }
 
 bool ScriptablePlugin::launch(const QString& packageId) {
     if (!m_enabled || m_launchCmd.isEmpty()) return false;
     QMap<QString, QString> vars;
     vars[QStringLiteral("ID")] = packageId;
-    runCommand(m_launchCmd, vars);
-    return true;
+    return QProcess::startDetached(QStringLiteral("/bin/sh"), buildShellArguments(m_launchCmd, vars), m_baseDir);
 }
 
 QList<ScriptablePlugin*> ScriptablePlugin::loadFromDirectories(const QStringList& directories, QObject* parent) {

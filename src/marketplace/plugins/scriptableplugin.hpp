@@ -1,7 +1,9 @@
 #pragma once
 
 #include "packageplugin.hpp"
+#include <QByteArray>
 #include <QJsonObject>
+#include <QMap>
 #include <QSettings>
 
 class ScriptablePlugin : public IPackagePlugin {
@@ -49,5 +51,13 @@ private:
 
     QSettings m_settings{QStringLiteral("AstraMarket"), QStringLiteral("Plugins")};
 
-    QByteArray runCommand(const QString& cmdTemplate, const QMap<QString, QString>& vars, ProgressCallback progressCb = nullptr);
+    struct ScriptResult {
+        int exitCode{-1};
+        QByteArray output;
+        QByteArray error;
+        bool timedOut{false};
+    };
+
+    static QStringList buildShellArguments(const QString& cmdTemplate, const QMap<QString, QString>& vars);
+    ScriptResult runCommand(const QString& cmdTemplate, const QMap<QString, QString>& vars, ProgressCallback progressCb = nullptr, int timeoutMs = 20000);
 };
