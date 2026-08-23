@@ -101,6 +101,12 @@ QStringList PackageManager::missingBackendTools() const {
         missing.append(tr("No AUR helper found, install paru or yay to manage AUR packages"));
     }
 
+    if (m_appimagePlugin && m_appimagePlugin->isEnabled() &&
+        QStandardPaths::findExecutable(QStringLiteral("appimageupdatetool")).isEmpty() &&
+        !m_appimagePlugin->getInstalled().isEmpty()) {
+        missing.append(tr("appimageupdatetool is missing, AppImages are not checked for updates"));
+    }
+
     return missing;
 }
 
