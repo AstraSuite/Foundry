@@ -22,11 +22,16 @@ QProcessEnvironment parsableEnvironment() {
     return environment;
 }
 
-ProcessResult run(const QString& program, const QStringList& arguments, const ProcessLineCallback& lineCallback, int timeoutMs, bool mergeChannels) {
+ProcessResult run(const QString& program, const QStringList& arguments, const ProcessLineCallback& lineCallback, int timeoutMs, bool mergeChannels, const ProcessEnvironmentOverrides& environmentOverrides) {
     ProcessResult result;
 
+    QProcessEnvironment environment = parsableEnvironment();
+    for (auto it = environmentOverrides.constBegin(); it != environmentOverrides.constEnd(); ++it) {
+        environment.insert(it.key(), it.value());
+    }
+
     QProcess process;
-    process.setProcessEnvironment(parsableEnvironment());
+    process.setProcessEnvironment(environment);
     if (mergeChannels) process.setProcessChannelMode(QProcess::MergedChannels);
     process.start(program, arguments);
 
@@ -94,11 +99,11 @@ ProcessResult run(const QString& program, const QStringList& arguments, const Pr
 }
 
 ProcessResult runProcess(const QString& program, const QStringList& arguments, int timeoutMs) {
-    return run(program, arguments, nullptr, timeoutMs, false);
+    return run(program, arguments, nullptr, timeoutMs, false, {});
 }
 
-ProcessResult runProcessStreaming(const QString& program, const QStringList& arguments, const ProcessLineCallback& lineCallback, int timeoutMs) {
-    return run(program, arguments, lineCallback, timeoutMs, true);
+ProcessResult runProcessStreaming(const QString& program, const QStringList& arguments, const ProcessLineCallback& lineCallback, int timeoutMs, const ProcessEnvironmentOverrides& environmentOverrides) {
+    return run(program, arguments, lineCallback, timeoutMs, true, environmentOverrides);
 }
 
 }

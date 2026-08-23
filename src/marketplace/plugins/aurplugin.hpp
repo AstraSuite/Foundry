@@ -1,6 +1,7 @@
 #pragma once
 
 #include "packageplugin.hpp"
+#include <QMap>
 #include <QSettings>
 
 class AurPlugin : public IPackagePlugin {
@@ -34,6 +35,16 @@ public:
     static QVariantList parseUpdatesOutput(const QString& output);
 
 private:
+    struct HelperInvocation {
+        bool usable{false};
+        QString reason;
+        QStringList arguments;
+        QMap<QString, QString> environment;
+    };
+
+    HelperInvocation buildHelperInvocation(const QStringList& operation) const;
+    bool runHelperOperation(const QStringList& operation, ProgressCallback progressCb);
+
     bool m_enabled{true};
     QString m_aurHelper{QStringLiteral("auto")};
     QSettings m_settings{QStringLiteral("AstraMarket"), QStringLiteral("Plugins")};
