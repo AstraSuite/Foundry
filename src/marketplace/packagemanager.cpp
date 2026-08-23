@@ -8,6 +8,7 @@
 #include <QTime>
 
 PackageManager::PackageManager(QObject* parent) : QObject(parent) {
+    m_pluginPool.setMaxThreadCount(8);
     initPlugins();
 }
 
@@ -196,6 +197,7 @@ QVariantList PackageManager::searchPackages(const QString& query, const QString&
     };
     QList<ScoredItem> scoredItems;
 
+    QList<IPackagePlugin*> eligiblePlugins;
     for (IPackagePlugin* plugin : m_plugins) {
         if (!plugin->isAvailable() || !plugin->isEnabled()) continue;
         if (!sourceFilter.isEmpty() &&
@@ -203,8 +205,20 @@ QVariantList PackageManager::searchPackages(const QString& query, const QString&
             plugin->name().compare(sourceFilter, Qt::CaseInsensitive) != 0) {
             continue;
         }
+        eligiblePlugins.append(plugin);
+    }
+    if (eligiblePlugins.isEmpty()) return results;
 
-        QVariantList pResults = plugin->search(q);
+    QList<QVariantList> pluginResults;
+    if (eligiblePlugins.size() == 1) {
+        pluginResults.append(eligiblePlugins.first()->search(q));
+    } else {
+        pluginResults = QtConcurrent::blockingMapped<QList<QVariantList>>(&m_pluginPool, eligiblePlugins, [&q](IPackagePlugin* plugin) {
+            return plugin->search(q);
+        });
+    }
+
+    for (const QVariantList& pResults : pluginResults) {
         for (const QVariant& v : pResults) {
             QVariantMap item = v.toMap();
             QString backend = item.value(QStringLiteral("backend")).toString();
