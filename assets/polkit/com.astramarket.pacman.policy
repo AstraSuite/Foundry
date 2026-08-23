@@ -6,13 +6,12 @@
   <icon_name>AstraMarket</icon_name>
   <action id="com.astramarket.pacman.update">
     <description>Run pacman package operations</description>
-    <message>Authentication is required to install or update system packages</message>
+    <message>Authentication is required to install, update or remove system packages</message>
     <defaults>
-      <allow_any>yes</allow_any>
-      <allow_inactive>yes</allow_inactive>
-      <allow_active>yes</allow_active>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
     </defaults>
     <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/pacman</annotate>
-    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
   </action>
 </policyconfig>

@@ -122,7 +122,3 @@ install(FILES assets/polkit/com.astramarket.pacman.policy
     DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions
 )
 
-install(FILES assets/polkit/10-astramarket-pacman.rules
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/rules.d
-)
-
