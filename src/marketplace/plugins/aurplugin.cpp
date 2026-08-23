@@ -1,6 +1,7 @@
 #include "aurplugin.hpp"
 #include "pluginprocess.hpp"
 #include <algorithm>
+#include <QDateTime>
 #include <QProcess>
 #include <QFile>
 #include <QSet>
@@ -245,14 +246,32 @@ QVariantMap AurPlugin::getDetails(const QString& packageId) {
 
                 map[QStringLiteral("description")] = obj[QStringLiteral("Description")].toString();
                 map[QStringLiteral("homepage")] = obj[QStringLiteral("URL")].toString();
+                map[QStringLiteral("url")] = obj[QStringLiteral("URL")].toString();
                 map[QStringLiteral("aurPage")] = QStringLiteral("https://aur.archlinux.org/packages/") + packageId;
 
-                if (obj[QStringLiteral("License")].isArray()) {
-                    QStringList licenses;
-                    for (const QJsonValue& license : obj[QStringLiteral("License")].toArray()) {
-                        licenses.append(license.toString());
+                const auto joinArray = [&obj](const QString& field) {
+                    QStringList values;
+                    for (const QJsonValue& value : obj[field].toArray()) {
+                        values.append(value.toString());
                     }
+                    return values;
+                };
+
+                const QStringList licenses = joinArray(QStringLiteral("License"));
+                if (!licenses.isEmpty()) {
                     map[QStringLiteral("license")] = licenses.join(QStringLiteral(", "));
+                    map[QStringLiteral("licenses")] = licenses.join(QStringLiteral(", "));
+                }
+
+                const QStringList provides = joinArray(QStringLiteral("Provides"));
+                if (!provides.isEmpty()) map[QStringLiteral("provides")] = provides.join(QStringLiteral(", "));
+
+                const QStringList depends = joinArray(QStringLiteral("Depends"));
+                if (!depends.isEmpty()) map[QStringLiteral("depends")] = depends;
+
+                const qint64 lastModified = obj[QStringLiteral("LastModified")].toInteger();
+                if (lastModified > 0) {
+                    map[QStringLiteral("buildDate")] = QDateTime::fromSecsSinceEpoch(lastModified).toString(QStringLiteral("yyyy-MM-dd"));
                 }
             }
         }

@@ -157,11 +157,30 @@ QVariantMap PacmanPlugin::parseInfoOutput(const QString& output, const QString& 
     assign(QStringLiteral("Description"), QStringLiteral("description"));
     assign(QStringLiteral("Version"), QStringLiteral("version"));
     assign(QStringLiteral("URL"), QStringLiteral("homepage"));
+    assign(QStringLiteral("URL"), QStringLiteral("url"));
     assign(QStringLiteral("Licenses"), QStringLiteral("license"));
+    assign(QStringLiteral("Licenses"), QStringLiteral("licenses"));
     assign(QStringLiteral("Packager"), QStringLiteral("developer"));
     assign(QStringLiteral("Repository"), QStringLiteral("repository"));
+    assign(QStringLiteral("Architecture"), QStringLiteral("architecture"));
     assign(QStringLiteral("Installed Size"), QStringLiteral("size"));
+    assign(QStringLiteral("Installed Size"), QStringLiteral("installedSize"));
     assign(QStringLiteral("Download Size"), QStringLiteral("downloadSize"));
+    assign(QStringLiteral("Build Date"), QStringLiteral("buildDate"));
+    assign(QStringLiteral("Install Date"), QStringLiteral("installDate"));
+    assign(QStringLiteral("Install Reason"), QStringLiteral("installReason"));
+    assign(QStringLiteral("Provides"), QStringLiteral("provides"));
+
+    const auto assignList = [&](const QString& field, const QString& key) {
+        const QString value = fields.value(field);
+        if (value.isEmpty() || value == QLatin1String("None")) return;
+
+        const QStringList entries = value.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+        if (!entries.isEmpty()) map[key] = entries;
+    };
+
+    assignList(QStringLiteral("Depends On"), QStringLiteral("depends"));
+    assignList(QStringLiteral("Required By"), QStringLiteral("requiredBy"));
 
     return map;
 }
@@ -194,11 +213,26 @@ QVariantList PacmanPlugin::getUpdates() {
 }
 
 QVariantMap PacmanPlugin::getDetails(const QString& packageId) {
-    astra::ProcessResult result = astra::runProcess(QStringLiteral("pacman"), {QStringLiteral("-Si"), packageId}, kQueryTimeoutMs);
-    if (!result.succeeded() || result.output.trimmed().isEmpty()) {
-        result = astra::runProcess(QStringLiteral("pacman"), {QStringLiteral("-Qi"), packageId}, kQueryTimeoutMs);
+    const astra::ProcessResult remote = astra::runProcess(QStringLiteral("pacman"), {QStringLiteral("-Si"), packageId}, kQueryTimeoutMs);
+    const astra::ProcessResult local = astra::runProcess(QStringLiteral("pacman"), {QStringLiteral("-Qi"), packageId}, kQueryTimeoutMs);
+
+    QVariantMap map = parseInfoOutput(remote.output, packageId);
+    const QVariantMap installed = parseInfoOutput(local.output, packageId);
+
+    for (auto it = installed.constBegin(); it != installed.constEnd(); ++it) {
+        if (!map.contains(it.key()) || map.value(it.key()).toString().isEmpty()) {
+            map.insert(it.key(), it.value());
+        }
     }
-    return parseInfoOutput(result.output, packageId);
+
+    if (local.succeeded() && !local.output.trimmed().isEmpty()) {
+        map[QStringLiteral("isInstalled")] = true;
+        for (const QString& key : {QStringLiteral("installReason"), QStringLiteral("installDate"), QStringLiteral("requiredBy")}) {
+            if (installed.contains(key)) map.insert(key, installed.value(key));
+        }
+    }
+
+    return map;
 }
 
 bool PacmanPlugin::install(const QString& packageId, const QVariantMap& options, ProgressCallback progressCb) {
