@@ -1,14 +1,14 @@
 import QtQuick
 import QtQuick.Layouts
-import AstraMarket.Config
+import Foundry.Config
 import qs.components
 import qs.components.controls
 import qs.components.containers
 import qs.services
 import qs.modules.astra.common
-import AstraMarket.Market 1.0
-import AstraMarket.Theme 1.0
-import AstraMarket.Tray 1.0
+import Foundry.Market 1.0
+import Foundry.Theme 1.0
+import Foundry.Tray 1.0
 
 PageBase {
     id: root
@@ -99,7 +99,7 @@ PageBase {
         ToggleRow {
             width: parent.width
             text: qsTr("Close Window to Tray")
-            subtext: qsTr("Keep Astra Market running in the background when the main window is closed")
+            subtext: qsTr("Keep Foundry running in the background when the main window is closed")
             checked: TrayManager.closeToTray
             enabled: TrayManager.trayEnabled
             disabled: !TrayManager.trayEnabled
@@ -112,7 +112,7 @@ PageBase {
             width: parent.width
             last: true
             text: qsTr("Start Minimized on Boot")
-            subtext: qsTr("Launch Astra Market silently in the system tray on login (~/.config/autostart)")
+            subtext: qsTr("Launch Foundry silently in the system tray on login (~/.config/autostart)")
             checked: TrayManager.autostart
             onCheckedChanged: {
                 TrayManager.autostart = checked;

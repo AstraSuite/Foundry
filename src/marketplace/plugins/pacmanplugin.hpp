@@ -36,5 +36,5 @@ public:
 
 private:
     bool m_enabled{true};
-    QSettings m_settings{QStringLiteral("AstraMarket"), QStringLiteral("Plugins")};
+    QSettings m_settings{QStringLiteral("astra-foundry"), QStringLiteral("Plugins")};
 };

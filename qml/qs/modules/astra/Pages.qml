@@ -1,5 +1,5 @@
 import QtQuick
-import AstraMarket.Config
+import Foundry.Config
 import qs.components
 import qs.modules.astra
 

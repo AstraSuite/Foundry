@@ -116,7 +116,7 @@ QVariantList AurPlugin::search(const QString& query, const QVariantMap& options)
     QNetworkAccessManager nam;
     QUrl url(QStringLiteral("https://aur.archlinux.org/rpc/v5/search/") + QUrl::toPercentEncoding(q));
     QNetworkRequest req(url);
-    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("astra-foundry/1.0"));
     req.setTransferTimeout(kNetworkTimeoutMs);
 
     QEventLoop loop;
@@ -163,7 +163,7 @@ QString AurPlugin::getBuildScript(const QString& packageId) {
     url.setQuery(query);
 
     QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("astra-foundry/1.0"));
     request.setTransferTimeout(kNetworkTimeoutMs);
 
     QEventLoop loop;
@@ -251,7 +251,7 @@ QVariantMap AurPlugin::getDetails(const QString& packageId) {
     QNetworkAccessManager nam;
     QUrl url(QStringLiteral("https://aur.archlinux.org/rpc/v5/info/") + QUrl::toPercentEncoding(packageId));
     QNetworkRequest req(url);
-    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("astra-foundry/1.0"));
     req.setTransferTimeout(kNetworkTimeoutMs);
 
     QEventLoop loop;

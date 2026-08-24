@@ -58,8 +58,8 @@ void TestParsers::pacmanSearchKeepsEveryEntry() {
 }
 
 void TestParsers::pacmanInstalledSkipsForeignPackages() {
-    const QString output = QStringLiteral("bash 5.3.15-1\nastramarket-git 1.1.0.r0-1\nvlc 3.0.21-10\n");
-    const QSet<QString> foreign = PacmanPlugin::parseForeignOutput(QStringLiteral("astramarket-git 1.1.0.r0-1\n"));
+    const QString output = QStringLiteral("bash 5.3.15-1\nastra-foundry-git 1.1.0.r0-1\nvlc 3.0.21-10\n");
+    const QSet<QString> foreign = PacmanPlugin::parseForeignOutput(QStringLiteral("astra-foundry-git 1.1.0.r0-1\n"));
 
     const QVariantList results = PacmanPlugin::parseInstalledOutput(output, foreign);
     QCOMPARE(results.size(), 2);

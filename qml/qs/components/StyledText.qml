@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import AstraMarket.Config
+import Foundry.Config
 import qs.services
 
 Text {

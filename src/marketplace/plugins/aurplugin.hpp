@@ -49,7 +49,7 @@ private:
 
     bool m_enabled{true};
     QString m_aurHelper{QStringLiteral("auto")};
-    QSettings m_settings{QStringLiteral("AstraMarket"), QStringLiteral("Plugins")};
+    QSettings m_settings{QStringLiteral("astra-foundry"), QStringLiteral("Plugins")};
 
     QString resolveHelper() const;
 };

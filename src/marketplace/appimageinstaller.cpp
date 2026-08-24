@@ -155,7 +155,7 @@ bool AppImageInstaller::installAppImage(const QString& fileUrlOrPath) {
     if (QFile::exists(QStringLiteral("/usr/bin/notify-send")) || QFile::exists(QStringLiteral("/bin/notify-send"))) {
         QString notifIcon = iconPath.isEmpty() ? QStringLiteral("system-software-install") : iconPath;
         QProcess::startDetached(QStringLiteral("notify-send"), {
-            QStringLiteral("Astra Market"),
+            QStringLiteral("Foundry"),
             QStringLiteral("Successfully installed ") + displayName + QStringLiteral("\nAvailable in your applications menu."),
             QStringLiteral("-i"), notifIcon
         });
@@ -219,8 +219,8 @@ QString AppImageInstaller::generateDesktopFile(const QString& appName, const QSt
             << "Icon=" << (iconPath.isEmpty() ? appName : iconPath) << "\n"
             << "Terminal=false\n"
             << "Categories=Utility;\n"
-            << "Comment=Installed via AstraMarket\n"
-            << "X-AppImage-InstalledBy=AstraMarket\n";
+            << "Comment=Installed via Foundry\n"
+            << "X-AppImage-InstalledBy=astra-foundry\n";
         file.close();
     }
 

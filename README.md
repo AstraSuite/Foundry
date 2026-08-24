@@ -1,6 +1,6 @@
-# AstraMarket
+# Foundry
 
-AstraMarket is a unified package manager providing both a graphical interface and a command-line interface for managing Flatpak, Pacman, AUR, AppImage, and custom package sources.
+Foundry is a unified package manager providing both a graphical interface and a command-line interface for managing Flatpak, Pacman, AUR, AppImage, and custom package sources.
 
 ## Requirements
 
@@ -22,25 +22,25 @@ Runtime, all optional — a source that is not installed is simply inactive:
 
 ### Arch Linux / AUR
 
-AstraMarket is available on the [AUR](https://aur.archlinux.org):
+Foundry is available on the [AUR](https://aur.archlinux.org):
 
 ```bash
 # Release (builds from source)
-paru -S astramarket
-# or yay -S astramarket
+paru -S astra-foundry
+# or yay -S astra-foundry
 
 # Precompiled binary (fast install)
-paru -S astramarket-bin
-# or yay -S astramarket-bin
+paru -S astra-foundry-bin
+# or yay -S astra-foundry-bin
 
 # Latest git development
-paru -S astramarket-git
-# or yay -S astramarket-git
+paru -S astra-foundry-git
+# or yay -S astra-foundry-git
 ```
 
 ### Manual Installation (From Source)
 
-Build and install AstraMarket system-wide:
+Build and install Foundry system-wide:
 
 ```bash
 mkdir -p build
@@ -49,7 +49,7 @@ cmake --build build
 sudo cmake --install build
 ```
 
-This installs the `astra` binary to `/usr/bin`, the desktop launcher to `/usr/share/applications/astra.desktop`, and the application icon to `/usr/share/icons/hicolor/scalable/apps/AstraMarket.svg`.
+This installs the `astra` binary to `/usr/bin`, the desktop launcher to `/usr/share/applications/astra.desktop`, and the application icon to `/usr/share/icons/hicolor/scalable/apps/astra-foundry.svg`.
 
 
 ## Running the GUI
@@ -143,7 +143,7 @@ Completions for bash, zsh and fish are installed alongside the binary.
 ## Privileges
 
 Pacman operations are executed through `pkexec`, so they are authorised by PolicyKit. The shipped action
-`com.astramarket.pacman.update` uses the standard defaults: administrator authentication is required, and
+`com.astra-foundry.pacman.update` uses the standard defaults: administrator authentication is required, and
 the authorisation is kept for the rest of the session (`auth_admin_keep`) so a full update does not ask
 repeatedly.
 

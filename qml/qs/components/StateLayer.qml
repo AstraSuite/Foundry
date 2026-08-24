@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import Caelestia
-import AstraMarket.Config
+import Foundry.Config
 import qs.services
 
 MouseArea {

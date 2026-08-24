@@ -19,7 +19,7 @@ TokenConfig::TokenConfig(QObject* parent)
     : RootConfig(parent)
     , m_appearance(new AppearanceTokens(this))
     , m_sizes(new SizeTokens(this)) {
-    QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+    QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
     bool sync = settings.value(QStringLiteral("theme/syncTokens"), true).toBool();
     setupFileBackend(configDir() + QStringLiteral("shell-tokens.json"));
     if (!sync) {

@@ -1,6 +1,6 @@
 # Plugin System Documentation
 
-AstraMarket supports external plugins to add support for additional package managers, software repositories, or asset providers (such as Wallhaven or custom script scrapers).
+Foundry supports external plugins to add support for additional package managers, software repositories, or asset providers (such as Wallhaven or custom script scrapers).
 
 ## Plugin Directory Structure
 
@@ -23,7 +23,7 @@ Each plugin directory must contain a `plugin.json` manifest file and any associa
 {
   "id": "my-source",
   "name": "My Custom Source",
-  "description": "Custom source provider for AstraMarket",
+  "description": "Custom source provider for Foundry",
   "icon": "extension",
   "requiredBinary": "curl",
   "commands": {

@@ -1,9 +1,9 @@
 [Desktop Entry]
-Name=Astra Market
+Name=Foundry
 GenericName=Package Manager
 Comment=Unified graphical and command-line package manager
 Exec=astra --gui %F
-Icon=AstraMarket
+Icon=astra-foundry
 Terminal=false
 Type=Application
 Categories=System;PackageManager;Utility;

@@ -1,14 +1,14 @@
 import QtQuick
 import QtQuick.Layouts
 import M3Shapes
-import AstraMarket.Config
+import Foundry.Config
 import qs.components
 import qs.components.controls
 import qs.components.containers
 import qs.components.effects
 import qs.services
 import qs.modules.astra.common
-import AstraMarket.Market 1.0
+import Foundry.Market 1.0
 
 PageBase {
     id: root

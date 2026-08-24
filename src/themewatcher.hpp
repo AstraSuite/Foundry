@@ -53,7 +53,7 @@ private:
     QString getSchemeFilePath() const;
 
     QFileSystemWatcher m_watcher;
-    QString m_name{ QStringLiteral("astramarket") };
+    QString m_name{ QStringLiteral("astra-foundry") };
     QString m_flavour{ QStringLiteral("default") };
     QString m_mode{ QStringLiteral("dark") };
     QString m_variant{ QStringLiteral("content") };

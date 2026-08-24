@@ -6,6 +6,7 @@
 #include <QIcon>
 #include <QDir>
 #include <QCommandLineParser>
+#include <QStandardPaths>
 #include <QCommandLineOption>
 #include <QProcess>
 #include <iostream>
@@ -39,8 +40,24 @@
 #define ASTRA_VERSION "1.1.0"
 #endif
 
+static void migrateLegacyPaths() {
+    const QString configHome = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
+    const QString dataHome = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+
+    const QList<QPair<QString, QString>> locations{
+        {configHome + QStringLiteral("/AstraMarket"), configHome + QStringLiteral("/astra-foundry")},
+        {dataHome + QStringLiteral("/AstraMarket"), dataHome + QStringLiteral("/astra-foundry")}
+    };
+
+    for (const auto& [legacy, current] : locations) {
+        if (!QFileInfo::exists(legacy) || QFileInfo::exists(current)) continue;
+        QDir().rename(legacy, current);
+    }
+}
+
 int main(int argc, char* argv[]) {
     qputenv("QML_XHR_ALLOW_FILE_READ", "1");
+    migrateLegacyPaths();
     bool launchGui = false;
     bool launchTray = false;
 
@@ -89,7 +106,7 @@ int main(int argc, char* argv[]) {
     if (!launchGui) {
         QCoreApplication app(argc, argv);
         app.setApplicationName(QStringLiteral("astra"));
-        app.setOrganizationName(QStringLiteral("AstraMarket"));
+        app.setOrganizationName(QStringLiteral("astra-foundry"));
         app.setApplicationVersion(QStringLiteral(ASTRA_VERSION));
 
         PackageManager pm;
@@ -107,16 +124,16 @@ int main(int argc, char* argv[]) {
 
     QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("astra"));
-    app.setOrganizationName(QStringLiteral("AstraMarket"));
+    app.setOrganizationName(QStringLiteral("astra-foundry"));
     app.setDesktopFileName(QStringLiteral("astra"));
     app.setApplicationVersion(QStringLiteral(ASTRA_VERSION));
     app.setQuitOnLastWindowClosed(false);
 
-    const QString iconPath = QStringLiteral(":/assets/icons/AstraMarket.svg");
+    const QString iconPath = QStringLiteral(":/assets/icons/astra-foundry.svg");
     if (QFile::exists(iconPath)) {
         app.setWindowIcon(QIcon(iconPath));
     } else {
-        app.setWindowIcon(QIcon(QStringLiteral("assets/icons/AstraMarket.svg")));
+        app.setWindowIcon(QIcon(QStringLiteral("assets/icons/astra-foundry.svg")));
     }
 
     const QString fontPath = QStringLiteral(":/assets/fonts/GoogleSansFlex-VariableFont_GRAD,ROND,opsz,slnt,wdth,wght.ttf");
@@ -127,19 +144,19 @@ int main(int argc, char* argv[]) {
     PackageManager* sharedPm = new PackageManager(&app);
     TrayManager::instance()->setPackageManager(sharedPm);
 
-    qmlRegisterSingletonType<ThemeWatcher>("AstraMarket.Theme", 1, 0, "ThemeWatcher", &ThemeWatcher::create);
+    qmlRegisterSingletonType<ThemeWatcher>("Foundry.Theme", 1, 0, "ThemeWatcher", &ThemeWatcher::create);
 
-    qmlRegisterSingletonType<TrayManager>("AstraMarket.Tray", 1, 0, "TrayManager", &TrayManager::create);
+    qmlRegisterSingletonType<TrayManager>("Foundry.Tray", 1, 0, "TrayManager", &TrayManager::create);
 
-    qmlRegisterSingletonType<AppImageInstaller>("AstraMarket.Market", 1, 0, "AppImageInstaller", [](QQmlEngine*, QJSEngine*) -> QObject* {
+    qmlRegisterSingletonType<AppImageInstaller>("Foundry.Market", 1, 0, "AppImageInstaller", [](QQmlEngine*, QJSEngine*) -> QObject* {
         return new AppImageInstaller();
     });
 
-    qmlRegisterSingletonType<PackageManager>("AstraMarket.Market", 1, 0, "PackageManager", [sharedPm](QQmlEngine*, QJSEngine*) -> QObject* {
+    qmlRegisterSingletonType<PackageManager>("Foundry.Market", 1, 0, "PackageManager", [sharedPm](QQmlEngine*, QJSEngine*) -> QObject* {
         return sharedPm;
     });
 
-    const char* configUris[] = { "AstraMarket.Config", "Caelestia.Config" };
+    const char* configUris[] = { "Foundry.Config", "Caelestia.Config" };
     for (const char* uri : configUris) {
         qmlRegisterSingletonType<caelestia::config::TokenConfig>(uri, 1, 0, "Tokens", &caelestia::config::TokenConfig::create);
         qmlRegisterSingletonType<caelestia::config::GlobalConfig>(uri, 1, 0, "GlobalConfig", &caelestia::config::GlobalConfig::create);
@@ -179,11 +196,11 @@ int main(int argc, char* argv[]) {
         qmlRegisterAnonymousType<caelestia::config::FontSizeTokens>(uri, 1);
     }
 
-    qmlRegisterType<BlobGroup>("AstraMarket.Blobs", 1, 0, "BlobGroup");
-    qmlRegisterType<BlobInvertedRect>("AstraMarket.Blobs", 1, 0, "BlobInvertedRect");
-    qmlRegisterType<BlobRect>("AstraMarket.Blobs", 1, 0, "BlobRect");
-    qmlRegisterType<BlobMaterial>("AstraMarket.Blobs", 1, 0, "BlobMaterial");
-    qmlRegisterType<BlobShape>("AstraMarket.Blobs", 1, 0, "BlobShape");
+    qmlRegisterType<BlobGroup>("Foundry.Blobs", 1, 0, "BlobGroup");
+    qmlRegisterType<BlobInvertedRect>("Foundry.Blobs", 1, 0, "BlobInvertedRect");
+    qmlRegisterType<BlobRect>("Foundry.Blobs", 1, 0, "BlobRect");
+    qmlRegisterType<BlobMaterial>("Foundry.Blobs", 1, 0, "BlobMaterial");
+    qmlRegisterType<BlobShape>("Foundry.Blobs", 1, 0, "BlobShape");
 
     QQmlApplicationEngine engine;
     engine.addImageProvider(QStringLiteral("icon"), new IconImageProvider());

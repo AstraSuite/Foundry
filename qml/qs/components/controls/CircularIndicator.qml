@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Templates
-import AstraMarket.Config
+import Foundry.Config
 import Caelestia.Internal
 import qs.components
 import qs.services

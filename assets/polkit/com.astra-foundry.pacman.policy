@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN" "http://www.freedesktop.org/standards/PolicyKit/1.0/policyconfig.dtd">
 <policyconfig>
-  <vendor>Astra Market</vendor>
+  <vendor>Foundry</vendor>
   <vendor_url>https://github.com/dim-ghub/AstraMarket</vendor_url>
-  <icon_name>AstraMarket</icon_name>
-  <action id="com.astramarket.pacman.update">
+  <icon_name>astra-foundry</icon_name>
+  <action id="com.astra-foundry.pacman.update">
     <description>Run pacman package operations</description>
     <message>Authentication is required to install, update or remove system packages</message>
     <defaults>

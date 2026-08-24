@@ -3,8 +3,8 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Caelestia
-import AstraMarket.Config
-import AstraMarket.Theme
+import Foundry.Config
+import Foundry.Theme
 
 QtObject {
     id: root

@@ -24,7 +24,7 @@ TrayManager* TrayManager::create(QQmlEngine*, QJSEngine*) {
 TrayManager::TrayManager(QObject* parent)
     : QObject(parent)
     , m_timer(new QTimer(this)) {
-    QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+    QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
     m_trayEnabled = settings.value(QStringLiteral("tray/enabled"), true).toBool();
     m_closeToTray = settings.value(QStringLiteral("tray/closeToTray"), true).toBool();
     m_autostart = settings.value(QStringLiteral("tray/autostart"), checkAutostartFileExists()).toBool();
@@ -98,10 +98,10 @@ void TrayManager::updateTrayIcon() {
         icon = QIcon(primaryRes);
     } else if (QFile::exists(fallbackFile)) {
         icon = QIcon(fallbackFile);
-    } else if (QFile::exists(QStringLiteral(":/assets/icons/AstraMarket.svg"))) {
-        icon = QIcon(QStringLiteral(":/assets/icons/AstraMarket.svg"));
+    } else if (QFile::exists(QStringLiteral(":/assets/icons/astra-foundry.svg"))) {
+        icon = QIcon(QStringLiteral(":/assets/icons/astra-foundry.svg"));
     } else {
-        icon = QIcon(QStringLiteral("assets/icons/AstraMarket.svg"));
+        icon = QIcon(QStringLiteral("assets/icons/astra-foundry.svg"));
     }
 
     m_trayIcon->setIcon(icon);
@@ -115,17 +115,17 @@ void TrayManager::initTray() {
 
     m_trayIcon = new QSystemTrayIcon(this);
     updateTrayIcon();
-    m_trayIcon->setToolTip(QStringLiteral("Astra Market"));
+    m_trayIcon->setToolTip(QStringLiteral("Foundry"));
 
     connect(ThemeWatcher::instance(), &ThemeWatcher::themeChanged, this, &TrayManager::updateTrayIcon);
 
     m_trayMenu = new QMenu();
 
-    m_statusAction = m_trayMenu->addAction(QStringLiteral("Astra Market"));
+    m_statusAction = m_trayMenu->addAction(QStringLiteral("Foundry"));
     m_statusAction->setEnabled(false);
     m_trayMenu->addSeparator();
 
-    m_openAction = m_trayMenu->addAction(QStringLiteral("Open Astra Market"), this, &TrayManager::requestShowMainWindow);
+    m_openAction = m_trayMenu->addAction(QStringLiteral("Open Foundry"), this, &TrayManager::requestShowMainWindow);
     m_checkAction = m_trayMenu->addAction(QStringLiteral("Check for Updates"), this, &TrayManager::checkForUpdates);
     m_updateAllAction = m_trayMenu->addAction(QStringLiteral("Update All Packages"), this, &TrayManager::updateAll);
     m_updateAllAction->setEnabled(false);
@@ -163,7 +163,7 @@ void TrayManager::onTrayIconActivated(QSystemTrayIcon::ActivationReason reason) 
 void TrayManager::setTrayEnabled(bool enabled) {
     if (m_trayEnabled != enabled) {
         m_trayEnabled = enabled;
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
         settings.setValue(QStringLiteral("tray/enabled"), enabled);
         emit trayEnabledChanged();
 
@@ -180,7 +180,7 @@ void TrayManager::setTrayEnabled(bool enabled) {
 void TrayManager::setCloseToTray(bool enabled) {
     if (m_closeToTray != enabled) {
         m_closeToTray = enabled;
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
         settings.setValue(QStringLiteral("tray/closeToTray"), enabled);
         emit closeToTrayChanged();
     }
@@ -189,7 +189,7 @@ void TrayManager::setCloseToTray(bool enabled) {
 void TrayManager::setAutostart(bool enabled) {
     if (m_autostart != enabled) {
         m_autostart = enabled;
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
         settings.setValue(QStringLiteral("tray/autostart"), enabled);
         updateAutostartFile(enabled);
         emit autostartChanged();
@@ -199,7 +199,7 @@ void TrayManager::setAutostart(bool enabled) {
 void TrayManager::setCheckIntervalHours(int hours) {
     if (m_checkIntervalHours != hours) {
         m_checkIntervalHours = hours;
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
         settings.setValue(QStringLiteral("tray/checkIntervalHours"), hours);
         emit checkIntervalHoursChanged();
         restartTimer();
@@ -209,7 +209,7 @@ void TrayManager::setCheckIntervalHours(int hours) {
 void TrayManager::setNotifyThreshold(int count) {
     if (m_notifyThreshold != count) {
         m_notifyThreshold = count;
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
         settings.setValue(QStringLiteral("tray/notifyThreshold"), count);
         emit notifyThresholdChanged();
     }
@@ -218,7 +218,7 @@ void TrayManager::setNotifyThreshold(int count) {
 void TrayManager::setAutoUpdateFlatpak(bool enabled) {
     if (m_autoUpdateFlatpak != enabled) {
         m_autoUpdateFlatpak = enabled;
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
         settings.setValue(QStringLiteral("tray/autoUpdateFlatpak"), enabled);
         emit autoUpdateFlatpakChanged();
     }
@@ -227,7 +227,7 @@ void TrayManager::setAutoUpdateFlatpak(bool enabled) {
 void TrayManager::setAutoUpdatePacman(bool enabled) {
     if (m_autoUpdatePacman != enabled) {
         m_autoUpdatePacman = enabled;
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
         settings.setValue(QStringLiteral("tray/autoUpdatePacman"), enabled);
         emit autoUpdatePacmanChanged();
     }
@@ -236,7 +236,7 @@ void TrayManager::setAutoUpdatePacman(bool enabled) {
 void TrayManager::setAutoUpdateAur(bool enabled) {
     if (m_autoUpdateAur != enabled) {
         m_autoUpdateAur = enabled;
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
         settings.setValue(QStringLiteral("tray/autoUpdateAur"), enabled);
         emit autoUpdateAurChanged();
     }
@@ -249,7 +249,7 @@ void TrayManager::setUseCaelestiaUpdate(bool enabled) {
     if (m_pm) {
         m_pm->setUseCaelestiaUpdate(enabled);
     } else {
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
         settings.setValue(QStringLiteral("plugins/useCaelestiaUpdate"), enabled);
     }
     emit useCaelestiaUpdateChanged();
@@ -258,7 +258,7 @@ void TrayManager::setUseCaelestiaUpdate(bool enabled) {
 void TrayManager::setAutoUpdateCaelestia(bool enabled) {
     if (m_autoUpdateCaelestia != enabled) {
         m_autoUpdateCaelestia = enabled;
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
         settings.setValue(QStringLiteral("tray/autoUpdateCaelestia"), enabled);
         emit autoUpdateCaelestiaChanged();
     }
@@ -340,14 +340,14 @@ void TrayManager::onUpdatesRefreshed() {
 
     if (m_pendingUpdateCount >= m_notifyThreshold && m_pendingUpdateCount > 0) {
         if (!autoUpdatingSources.isEmpty()) {
-            const QString title = QStringLiteral("Astra Market - Applying Updates");
+            const QString title = QStringLiteral("Foundry - Applying Updates");
             const QString message = QStringLiteral("Automatically applying updates for: %1 (%2 total pending update%3).")
                 .arg(autoUpdatingSources.join(QStringLiteral(", ")))
                 .arg(m_pendingUpdateCount)
                 .arg(m_pendingUpdateCount > 1 ? QStringLiteral("s") : QString());
             showNotification(title, message);
         } else {
-            const QString title = QStringLiteral("Astra Market - Updates Available");
+            const QString title = QStringLiteral("Foundry - Updates Available");
             const QString message = QStringLiteral("%1 update%2 available across: %3.")
                 .arg(m_pendingUpdateCount)
                 .arg(m_pendingUpdateCount > 1 ? QStringLiteral("s") : QString())
@@ -366,7 +366,7 @@ void TrayManager::updateTrayIconState() {
         return;
 
     if (m_pendingUpdateCount > 0) {
-        m_trayIcon->setToolTip(QStringLiteral("Astra Market - %1 update%2 available")
+        m_trayIcon->setToolTip(QStringLiteral("Foundry - %1 update%2 available")
             .arg(m_pendingUpdateCount)
             .arg(m_pendingUpdateCount > 1 ? QStringLiteral("s") : QString()));
         if (m_statusAction) {
@@ -376,7 +376,7 @@ void TrayManager::updateTrayIconState() {
             m_updateAllAction->setEnabled(true);
         }
     } else {
-        m_trayIcon->setToolTip(QStringLiteral("Astra Market - System Up to Date"));
+        m_trayIcon->setToolTip(QStringLiteral("Foundry - System Up to Date"));
         if (m_statusAction) {
             m_statusAction->setText(QStringLiteral("System Up to Date"));
         }
@@ -407,8 +407,8 @@ void TrayManager::showNotification(const QString& title, const QString& message)
 
     if (!QStandardPaths::findExecutable(QStringLiteral("notify-send")).isEmpty()) {
         QProcess::startDetached(QStringLiteral("notify-send"), {
-            QStringLiteral("-a"), QStringLiteral("Astra Market"),
-            QStringLiteral("-i"), QStringLiteral("AstraMarket"),
+            QStringLiteral("-a"), QStringLiteral("Foundry"),
+            QStringLiteral("-i"), QStringLiteral("astra-foundry"),
             title,
             message
         });
@@ -431,10 +431,10 @@ void TrayManager::updateAutostartFile(bool enable) {
             const QString content = QStringLiteral(
                 "[Desktop Entry]\n"
                 "Type=Application\n"
-                "Name=Astra Market Tray\n"
+                "Name=Foundry Tray\n"
                 "Comment=Unified package manager background notifier\n"
                 "Exec=astra --tray\n"
-                "Icon=AstraMarket\n"
+                "Icon=astra-foundry\n"
                 "Terminal=false\n"
                 "Categories=System;PackageManager;\n"
                 "X-GNOME-Autostart-enabled=true\n"

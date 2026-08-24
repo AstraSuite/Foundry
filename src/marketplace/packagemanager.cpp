@@ -31,7 +31,7 @@ void PackageManager::initPlugins() {
     m_aurPlugin = new AurPlugin(this);
     m_appimagePlugin = new AppImagePlugin(this);
 
-    QSettings legacySettings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+    QSettings legacySettings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
     const QList<QPair<QString, IPackagePlugin*>> legacyKeys{
         {QStringLiteral("plugins/flatpak"), m_flatpakPlugin},
         {QStringLiteral("plugins/pacman"), m_pacmanPlugin},
@@ -138,12 +138,12 @@ bool PackageManager::isAppImageAvailable() const { return m_appimagePlugin ? m_a
 bool PackageManager::isCaelestiaAvailable() const { return !QStandardPaths::findExecutable(QStringLiteral("caelestia")).isEmpty(); }
 
 bool PackageManager::useCaelestiaUpdate() const {
-    QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+    QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
     return settings.value(QStringLiteral("plugins/useCaelestiaUpdate"), isCaelestiaAvailable()).toBool();
 }
 
 void PackageManager::setUseCaelestiaUpdate(bool enable) {
-    QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+    QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
     if (settings.value(QStringLiteral("plugins/useCaelestiaUpdate")).toBool() != enable) {
         settings.setValue(QStringLiteral("plugins/useCaelestiaUpdate"), enable);
         emit useCaelestiaUpdateChanged();
