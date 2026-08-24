@@ -29,6 +29,11 @@ PageBase {
     readonly property int detailContentFlags: (root.infoMap && root.infoMap.contentRatingFlags !== undefined) ? root.infoMap.contentRatingFlags : -1
     readonly property real detailInstalls: (root.infoMap && root.infoMap.installsTotal) ? root.infoMap.installsTotal : 0
     readonly property real detailInstallsLastMonth: (root.infoMap && root.infoMap.installsLastMonth) ? root.infoMap.installsLastMonth : 0
+    readonly property string detailVersion: {
+        if (root.infoMap && root.infoMap.version)
+            return root.infoMap.version;
+        return (root.appData && root.appData.version) ? root.appData.version : "";
+    }
     readonly property string detailBuildDate: (root.infoMap && root.infoMap.buildDate) ? root.infoMap.buildDate : ""
     readonly property string detailInstallReason: (root.infoMap && root.infoMap.installReason) ? root.infoMap.installReason : ""
     readonly property string detailProvides: (root.infoMap && root.infoMap.provides) ? root.infoMap.provides : ""
@@ -51,9 +56,9 @@ PageBase {
     property string selectedScope: (root.appData && root.appData.scope) ? root.appData.scope : "user"
 
     function formatDescription(rawText): string {
-        if (!rawText) return qsTr("An essential desktop application for your Linux system.");
+        if (!rawText) return qsTr("No description available.");
         var text = String(rawText).trim();
-        if (text.length === 0) return qsTr("An essential desktop application for your Linux system.");
+        if (text.length === 0) return qsTr("No description available.");
 
         if (text.indexOf("<p>") !== -1 || text.indexOf("<ul>") !== -1 || text.indexOf("<ol>") !== -1 || text.indexOf("<br") !== -1 || text.indexOf("<div>") !== -1) {
             return text;
@@ -1178,9 +1183,11 @@ PageBase {
         RowLayout {
             Layout.fillWidth: true
             spacing: Tokens.padding.small
+            visible: root.detailVersion !== "" || root.detailBuildDate !== ""
 
             StyledText {
-                text: qsTr("Version 2.4.1")
+                visible: root.detailVersion !== ""
+                text: qsTr("Version %1").arg(root.detailVersion)
                 font: Tokens.font.label.small
                 color: Colours.palette.m3onSurfaceVariant
             }
@@ -1188,7 +1195,8 @@ PageBase {
             Item { Layout.fillWidth: true }
 
             StyledText {
-                text: qsTr("Updated recently")
+                visible: root.detailBuildDate !== ""
+                text: qsTr("Built %1").arg(root.detailBuildDate)
                 font: Tokens.font.label.small
                 color: Colours.palette.m3onSurfaceVariant
             }
