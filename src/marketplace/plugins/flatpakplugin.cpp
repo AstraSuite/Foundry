@@ -192,6 +192,54 @@ QVariantList FlatpakPlugin::parseCollectionHits(const QByteArray& payload, QSet<
     return results;
 }
 
+QMap<QString, QStringList> FlatpakPlugin::parseOverrides(const QString& output) {
+    QMap<QString, QStringList> revoked;
+
+    const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    for (const QString& line : lines) {
+        const QString trimmed = line.trimmed();
+        const qsizetype separator = trimmed.indexOf(QLatin1Char('='));
+        if (separator <= 0) continue;
+
+        const QString section = trimmed.left(separator);
+        const QStringList values = trimmed.mid(separator + 1).split(QLatin1Char(';'), Qt::SkipEmptyParts);
+
+        for (const QString& value : values) {
+            if (!value.startsWith(QLatin1Char('!'))) continue;
+            revoked[section].append(value.mid(1).section(QLatin1Char(':'), 0, 0));
+        }
+    }
+    return revoked;
+}
+
+QMap<QString, QStringList> FlatpakPlugin::getOverrides(const QString& packageId) {
+    if (!isAvailable() || packageId.isEmpty()) return {};
+
+    const astra::ProcessResult result = astra::runProcess(
+        QStringLiteral("flatpak"),
+        {QStringLiteral("override"), QStringLiteral("--user"), QStringLiteral("--show"), packageId},
+        kQueryTimeoutMs);
+    return parseOverrides(result.output);
+}
+
+bool FlatpakPlugin::setPermission(const QString& packageId, const QString& kind, const QString& value, const QString& access, bool enabled) {
+    if (!isAvailable() || packageId.isEmpty() || kind.isEmpty() || value.isEmpty()) return false;
+
+    QString flag;
+    if (kind == QStringLiteral("shared")) flag = enabled ? QStringLiteral("--share=") : QStringLiteral("--unshare=");
+    else if (kind == QStringLiteral("socket")) flag = enabled ? QStringLiteral("--socket=") : QStringLiteral("--nosocket=");
+    else if (kind == QStringLiteral("device")) flag = enabled ? QStringLiteral("--device=") : QStringLiteral("--nodevice=");
+    else if (kind == QStringLiteral("filesystem")) flag = enabled ? QStringLiteral("--filesystem=") : QStringLiteral("--nofilesystem=");
+    else return false;
+
+    const QString argument = flag + value + (enabled ? access : QString());
+    const astra::ProcessResult result = astra::runProcess(
+        QStringLiteral("flatpak"),
+        {QStringLiteral("override"), QStringLiteral("--user"), argument, packageId},
+        kQueryTimeoutMs);
+    return result.succeeded();
+}
+
 QVariantList FlatpakPlugin::parseRemotesOutput(const QString& output, const QString& scope) {
     QVariantList remotes;
 
@@ -453,64 +501,74 @@ int flaggedContentCategories(const QJsonObject& details) {
     return -1;
 }
 
-void appendPermission(QVariantList& entries, const QString& label, const QString& icon, bool sensitive) {
-    for (const QVariant& value : entries) {
-        if (value.toMap().value(QStringLiteral("label")).toString() == label) return;
+void appendPermission(QVariantList& entries, const QString& label, const QString& icon, bool sensitive,
+                      const QString& kind, const QString& value, const QString& access = QString()) {
+    for (const QVariant& existing : entries) {
+        if (existing.toMap().value(QStringLiteral("label")).toString() == label) return;
     }
 
     QVariantMap entry;
     entry[QStringLiteral("label")] = label;
     entry[QStringLiteral("icon")] = icon;
     entry[QStringLiteral("sensitive")] = sensitive;
+    entry[QStringLiteral("kind")] = kind;
+    entry[QStringLiteral("value")] = value;
+    entry[QStringLiteral("access")] = access;
+    entry[QStringLiteral("revoked")] = false;
     entries.append(entry);
 }
 
 void appendSharedPermission(QVariantList& entries, const QString& value) {
-    if (value == QStringLiteral("network")) appendPermission(entries, QObject::tr("Network access"), QStringLiteral("public"), false);
+    if (value == QStringLiteral("network")) appendPermission(entries, QObject::tr("Network access"), QStringLiteral("public"), false, QStringLiteral("shared"), value);
 }
 
 void appendSocketPermission(QVariantList& entries, const QString& value) {
-    if (value == QStringLiteral("x11")) appendPermission(entries, QObject::tr("Legacy X11 windowing system"), QStringLiteral("desktop_windows"), true);
-    else if (value == QStringLiteral("wayland")) appendPermission(entries, QObject::tr("Wayland windowing system"), QStringLiteral("desktop_windows"), false);
-    else if (value == QStringLiteral("fallback-x11")) appendPermission(entries, QObject::tr("X11 windowing system as fallback"), QStringLiteral("desktop_windows"), false);
-    else if (value == QStringLiteral("pulseaudio")) appendPermission(entries, QObject::tr("Audio"), QStringLiteral("volume_up"), false);
-    else if (value == QStringLiteral("session-bus")) appendPermission(entries, QObject::tr("Full session bus access"), QStringLiteral("hub"), true);
-    else if (value == QStringLiteral("system-bus")) appendPermission(entries, QObject::tr("Full system bus access"), QStringLiteral("hub"), true);
-    else if (value == QStringLiteral("ssh-auth")) appendPermission(entries, QObject::tr("SSH agent"), QStringLiteral("key"), true);
-    else if (value == QStringLiteral("gpg-agent")) appendPermission(entries, QObject::tr("GPG agent"), QStringLiteral("key"), true);
-    else if (value == QStringLiteral("cups")) appendPermission(entries, QObject::tr("Printing"), QStringLiteral("print"), false);
+    if (value == QStringLiteral("x11")) appendPermission(entries, QObject::tr("Legacy X11 windowing system"), QStringLiteral("desktop_windows"), true, QStringLiteral("socket"), value);
+    else if (value == QStringLiteral("wayland")) appendPermission(entries, QObject::tr("Wayland windowing system"), QStringLiteral("desktop_windows"), false, QStringLiteral("socket"), value);
+    else if (value == QStringLiteral("fallback-x11")) appendPermission(entries, QObject::tr("X11 windowing system as fallback"), QStringLiteral("desktop_windows"), false, QStringLiteral("socket"), value);
+    else if (value == QStringLiteral("pulseaudio")) appendPermission(entries, QObject::tr("Audio"), QStringLiteral("volume_up"), false, QStringLiteral("socket"), value);
+    else if (value == QStringLiteral("session-bus")) appendPermission(entries, QObject::tr("Full session bus access"), QStringLiteral("hub"), true, QStringLiteral("socket"), value);
+    else if (value == QStringLiteral("system-bus")) appendPermission(entries, QObject::tr("Full system bus access"), QStringLiteral("hub"), true, QStringLiteral("socket"), value);
+    else if (value == QStringLiteral("ssh-auth")) appendPermission(entries, QObject::tr("SSH agent"), QStringLiteral("key"), true, QStringLiteral("socket"), value);
+    else if (value == QStringLiteral("gpg-agent")) appendPermission(entries, QObject::tr("GPG agent"), QStringLiteral("key"), true, QStringLiteral("socket"), value);
+    else if (value == QStringLiteral("cups")) appendPermission(entries, QObject::tr("Printing"), QStringLiteral("print"), false, QStringLiteral("socket"), value);
 }
 
 void appendDevicePermission(QVariantList& entries, const QString& value) {
-    if (value == QStringLiteral("all")) appendPermission(entries, QObject::tr("All devices"), QStringLiteral("devices_other"), true);
-    else if (value == QStringLiteral("dri")) appendPermission(entries, QObject::tr("GPU acceleration"), QStringLiteral("memory"), false);
-    else if (value == QStringLiteral("input")) appendPermission(entries, QObject::tr("Input devices"), QStringLiteral("keyboard"), false);
-    else if (value == QStringLiteral("kvm")) appendPermission(entries, QObject::tr("Virtual machines"), QStringLiteral("developer_board"), true);
-    else if (value == QStringLiteral("shm")) appendPermission(entries, QObject::tr("Shared memory"), QStringLiteral("memory"), false);
+    if (value == QStringLiteral("all")) appendPermission(entries, QObject::tr("All devices"), QStringLiteral("devices_other"), true, QStringLiteral("device"), value);
+    else if (value == QStringLiteral("dri")) appendPermission(entries, QObject::tr("GPU acceleration"), QStringLiteral("memory"), false, QStringLiteral("device"), value);
+    else if (value == QStringLiteral("input")) appendPermission(entries, QObject::tr("Input devices"), QStringLiteral("keyboard"), false, QStringLiteral("device"), value);
+    else if (value == QStringLiteral("kvm")) appendPermission(entries, QObject::tr("Virtual machines"), QStringLiteral("developer_board"), true, QStringLiteral("device"), value);
+    else if (value == QStringLiteral("shm")) appendPermission(entries, QObject::tr("Shared memory"), QStringLiteral("memory"), false, QStringLiteral("device"), value);
 }
 
 void appendFilesystemPermission(QVariantList& entries, const QString& value) {
     QString path = value;
+    QString access;
     bool readOnly = false;
-    if (path.endsWith(QStringLiteral(":ro"))) {
-        path.chop(3);
-        readOnly = true;
-    } else if (path.endsWith(QStringLiteral(":rw")) || path.endsWith(QStringLiteral(":create"))) {
-        path = path.section(QLatin1Char(':'), 0, 0);
+
+    const qsizetype separator = path.lastIndexOf(QLatin1Char(':'));
+    if (separator > 0) {
+        access = path.mid(separator);
+        path = path.left(separator);
+        readOnly = access == QStringLiteral(":ro");
     }
 
     if (path == QStringLiteral("host")) {
-        appendPermission(entries, readOnly ? QObject::tr("All system files, read only") : QObject::tr("All system files"), QStringLiteral("folder_open"), !readOnly);
+        appendPermission(entries, readOnly ? QObject::tr("All system files, read only") : QObject::tr("All system files"),
+                         QStringLiteral("folder_open"), !readOnly, QStringLiteral("filesystem"), path, access);
     } else if (path == QStringLiteral("host-os")) {
-        appendPermission(entries, QObject::tr("System libraries and binaries"), QStringLiteral("folder_open"), true);
+        appendPermission(entries, QObject::tr("System libraries and binaries"), QStringLiteral("folder_open"), true, QStringLiteral("filesystem"), path, access);
     } else if (path == QStringLiteral("host-etc")) {
-        appendPermission(entries, QObject::tr("System configuration in /etc"), QStringLiteral("folder_open"), true);
+        appendPermission(entries, QObject::tr("System configuration in /etc"), QStringLiteral("folder_open"), true, QStringLiteral("filesystem"), path, access);
     } else if (path == QStringLiteral("home")) {
-        appendPermission(entries, readOnly ? QObject::tr("Your home folder, read only") : QObject::tr("Your home folder"), QStringLiteral("home"), !readOnly);
+        appendPermission(entries, readOnly ? QObject::tr("Your home folder, read only") : QObject::tr("Your home folder"),
+                         QStringLiteral("home"), !readOnly, QStringLiteral("filesystem"), path, access);
     } else if (path.startsWith(QStringLiteral("xdg-"))) {
-        appendPermission(entries, QObject::tr("Folder: %1").arg(path.mid(4)), QStringLiteral("folder"), false);
+        appendPermission(entries, QObject::tr("Folder: %1").arg(path.mid(4)), QStringLiteral("folder"), false, QStringLiteral("filesystem"), path, access);
     } else if (!path.isEmpty()) {
-        appendPermission(entries, QObject::tr("Path: %1").arg(path), QStringLiteral("folder"), !readOnly && !path.startsWith(QLatin1Char('~')));
+        appendPermission(entries, QObject::tr("Path: %1").arg(path), QStringLiteral("folder"),
+                         !readOnly && !path.startsWith(QLatin1Char('~')), QStringLiteral("filesystem"), path, access);
     }
 }
 
@@ -639,6 +697,29 @@ QVariantMap FlatpakPlugin::getDetails(const QString& packageId) {
 
         const QString runtime = metadata.value(QStringLiteral("runtimeName")).toString();
         if (!runtime.isEmpty()) map[QStringLiteral("runtime")] = runtime;
+    }
+
+    const QMap<QString, QStringList> overrides = getOverrides(packageId);
+    if (!overrides.isEmpty()) {
+        static const QMap<QString, QString> sections{
+            {QStringLiteral("shared"), QStringLiteral("shared")},
+            {QStringLiteral("socket"), QStringLiteral("sockets")},
+            {QStringLiteral("device"), QStringLiteral("devices")},
+            {QStringLiteral("filesystem"), QStringLiteral("filesystems")}
+        };
+
+        QVariantList permissions = map.value(QStringLiteral("permissions")).toList();
+        for (QVariant& value : permissions) {
+            QVariantMap entry = value.toMap();
+            const QString section = sections.value(entry.value(QStringLiteral("kind")).toString());
+            if (section.isEmpty()) continue;
+
+            if (overrides.value(section).contains(entry.value(QStringLiteral("value")).toString())) {
+                entry[QStringLiteral("revoked")] = true;
+                value = entry;
+            }
+        }
+        map[QStringLiteral("permissions")] = permissions;
     }
 
     if (map.value(QStringLiteral("permissions")).toList().isEmpty()) {

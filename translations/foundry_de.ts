@@ -149,12 +149,12 @@
     </message>
     <message>
         <location line="+97" />
-        <location line="+304" />
+        <location line="+324" />
         <source>Download Size</source>
         <translation>Downloadgröße</translation>
     </message>
     <message>
-        <location line="-280" />
+        <location line="-300" />
         <source>Community</source>
         <translation>Community</translation>
     </message>
@@ -165,12 +165,12 @@
     </message>
     <message>
         <location line="+30" />
-        <location line="+231" />
+        <location line="+251" />
         <source>Installed Size</source>
         <translation>Installierte Größe</translation>
     </message>
     <message>
-        <location line="-204" />
+        <location line="-224" />
         <source>Everyone</source>
         <translation>Alle Altersgruppen</translation>
     </message>
@@ -200,12 +200,22 @@
         <translation>Berechtigungen</translation>
     </message>
     <message>
-        <location line="+8" />
+        <location line="+9" />
+        <source>What this application is allowed to access outside its sandbox. Turning one off adds a permission override for your user.</source>
+        <translation>Worauf diese Anwendung außerhalb ihrer Sandbox zugreifen darf. Ausschalten legt eine Berechtigungs-Ausnahme für den eigenen Benutzer an.</translation>
+    </message>
+    <message>
+        <location line="+1" />
         <source>What this application is allowed to access outside its sandbox.</source>
         <translation>Worauf diese Anwendung außerhalb ihrer Sandbox zugreifen darf.</translation>
     </message>
     <message>
-        <location line="+56" />
+        <location line="+29" />
+        <source>%1 (revoked)</source>
+        <translation>%1 (entzogen)</translation>
+    </message>
+    <message>
+        <location line="+45" />
         <source>Information</source>
         <translation>Informationen</translation>
     </message>
@@ -886,7 +896,7 @@
         <translation>%1 konnte nicht entfernt werden</translation>
     </message>
     <message>
-        <location line="+113" />
+        <location line="+132" />
         <source>Added remote %1</source>
         <translation>Remote %1 hinzugefügt</translation>
     </message>
@@ -1000,7 +1010,7 @@
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../src/marketplace/plugins/flatpakplugin.cpp" line="+469" />
+        <location filename="../src/marketplace/plugins/flatpakplugin.cpp" line="+522" />
         <source>Network access</source>
         <translation>Netzwerkzugriff</translation>
     </message>
@@ -1075,7 +1085,7 @@
         <translation>Gemeinsamer Speicher</translation>
     </message>
     <message>
-        <location line="+14" />
+        <location line="+16" />
         <source>All system files, read only</source>
         <translation>Alle Systemdateien, nur lesend</translation>
     </message>
@@ -1085,7 +1095,7 @@
         <translation>Alle Systemdateien</translation>
     </message>
     <message>
-        <location line="+2" />
+        <location line="+3" />
         <source>System libraries and binaries</source>
         <translation>Systembibliotheken und -programme</translation>
     </message>
@@ -1105,7 +1115,7 @@
         <translation>Persönlicher Ordner</translation>
     </message>
     <message>
-        <location line="+2" />
+        <location line="+3" />
         <source>Folder: %1</source>
         <translation>Ordner: %1</translation>
     </message>

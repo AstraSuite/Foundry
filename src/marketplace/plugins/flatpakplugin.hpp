@@ -2,6 +2,7 @@
 
 #include "packageplugin.hpp"
 #include <QJsonObject>
+#include <QMap>
 #include <QSet>
 #include <QSettings>
 
@@ -41,6 +42,10 @@ public:
 
     static QVariantList permissionEntries(const QJsonObject& permissions);
     static QVariantList parseLocalPermissions(const QString& output);
+    static QMap<QString, QStringList> parseOverrides(const QString& output);
+
+    QMap<QString, QStringList> getOverrides(const QString& packageId);
+    bool setPermission(const QString& packageId, const QString& kind, const QString& value, const QString& access, bool enabled);
     static QString formatBytes(qint64 bytes);
 
     static QString scopeArgument(const QString& scope);
