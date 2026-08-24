@@ -12,7 +12,7 @@ if(GIT_TAG_VERSION MATCHES "^v?([0-9]+\\.[0-9]+.*)")
     string(REGEX REPLACE "^v" "" ASTRA_VERSION_RAW "${GIT_TAG_VERSION}")
     set(ASTRA_VERSION_STR "${ASTRA_VERSION_RAW}")
 else()
-    set(ASTRA_VERSION_STR "1.1.0")
+    set(ASTRA_VERSION_STR "1.2.0")
 endif()
 
 project(astra-foundry VERSION ${ASTRA_VERSION_STR} LANGUAGES CXX)
