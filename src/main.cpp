@@ -37,7 +37,7 @@
 #include <QLocalSocket>
 
 #ifndef ASTRA_VERSION
-#define ASTRA_VERSION "1.1.0"
+#define ASTRA_VERSION "1.2.0"
 #endif
 
 static void migrateLegacyPaths() {
