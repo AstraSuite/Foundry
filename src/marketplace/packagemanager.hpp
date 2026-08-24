@@ -100,6 +100,7 @@ public:
     Q_INVOKABLE void fetchCollectionAsync(const QString& collection, int limit = 12);
     Q_INVOKABLE void fetchBuildScriptAsync(const QString& packageId);
     Q_INVOKABLE QVariantList flatpakRemotes() const;
+    Q_INVOKABLE void setFlatpakPermission(const QString& packageId, const QString& kind, const QString& value, const QString& access, bool enabled);
     Q_INVOKABLE void addFlatpakRemote(const QString& name, const QString& url, const QString& scope = QStringLiteral("user"));
     Q_INVOKABLE void removeFlatpakRemote(const QString& name, const QString& scope = QStringLiteral("user"));
     Q_INVOKABLE QVariantList checkForUpdates();

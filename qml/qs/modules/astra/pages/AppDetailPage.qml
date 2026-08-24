@@ -682,7 +682,9 @@ PageBase {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: qsTr("What this application is allowed to access outside its sandbox.")
+                    text: root.isInstalled
+                        ? qsTr("What this application is allowed to access outside its sandbox. Turning one off adds a permission override for your user.")
+                        : qsTr("What this application is allowed to access outside its sandbox.")
                     font: Tokens.font.body.small
                     color: Colours.palette.m3onSurfaceVariant
                     wrapMode: Text.WordWrap
@@ -695,6 +697,7 @@ PageBase {
                         id: permissionRow
 
                         required property var modelData
+                        readonly property bool revoked: !!permissionRow.modelData.revoked
 
                         Layout.fillWidth: true
                         spacing: Tokens.padding.small
@@ -702,15 +705,32 @@ PageBase {
                         MaterialIcon {
                             text: permissionRow.modelData.icon
                             fontStyle: Tokens.font.icon.small
-                            color: permissionRow.modelData.sensitive ? Colours.palette.m3error : Colours.palette.m3onSurfaceVariant
+                            color: permissionRow.revoked
+                                ? Colours.palette.m3outline
+                                : (permissionRow.modelData.sensitive ? Colours.palette.m3error : Colours.palette.m3onSurfaceVariant)
                         }
 
                         StyledText {
                             Layout.fillWidth: true
-                            text: permissionRow.modelData.label
+                            text: permissionRow.revoked
+                                ? qsTr("%1 (revoked)").arg(permissionRow.modelData.label)
+                                : permissionRow.modelData.label
                             font: Tokens.font.body.medium
-                            color: permissionRow.modelData.sensitive ? Colours.palette.m3error : Colours.palette.m3onSurface
+                            color: permissionRow.revoked
+                                ? Colours.palette.m3outline
+                                : (permissionRow.modelData.sensitive ? Colours.palette.m3error : Colours.palette.m3onSurface)
                             elide: Text.ElideRight
+                        }
+
+                        StyledSwitch {
+                            visible: root.isInstalled && permissionRow.modelData.kind
+                            checked: !permissionRow.revoked
+                            Layout.alignment: Qt.AlignVCenter
+                            onToggled: PackageManager.setFlatpakPermission(root.appData.id || "",
+                                                                           permissionRow.modelData.kind,
+                                                                           permissionRow.modelData.value,
+                                                                           permissionRow.modelData.access || "",
+                                                                           checked)
                         }
                     }
                 }

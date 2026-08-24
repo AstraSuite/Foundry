@@ -704,6 +704,25 @@ QVariantList PackageManager::flatpakRemotes() const {
     return m_flatpakPlugin ? m_flatpakPlugin->getRemotes() : QVariantList();
 }
 
+void PackageManager::setFlatpakPermission(const QString& packageId, const QString& kind, const QString& value, const QString& access, bool enabled) {
+    if (!m_flatpakPlugin || packageId.isEmpty()) return;
+
+    appendLog(QStringLiteral("[%1] %2 %3 for %4").arg(
+        QTime::currentTime().toString(QStringLiteral("HH:mm:ss")),
+        enabled ? QStringLiteral("Granting") : QStringLiteral("Revoking"),
+        value, packageId));
+
+    auto* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, packageId] {
+        watcher->deleteLater();
+        fetchPackageDetailsAsync(packageId, QStringLiteral("Flatpak"));
+    });
+
+    watcher->setFuture(QtConcurrent::run(&m_pluginPool, [this, packageId, kind, value, access, enabled] {
+        return m_flatpakPlugin->setPermission(packageId, kind, value, access, enabled);
+    }));
+}
+
 void PackageManager::addFlatpakRemote(const QString& name, const QString& url, const QString& scope) {
     if (!m_flatpakPlugin || name.trimmed().isEmpty() || url.trimmed().isEmpty()) return;
 
