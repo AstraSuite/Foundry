@@ -13,6 +13,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QDir>
@@ -66,7 +67,8 @@ QVariantList AppImagePlugin::parseCatalog(const QByteArray& payload) {
         QVariantMap entry;
         entry[QStringLiteral("id")] = name;
         entry[QStringLiteral("name")] = name;
-        entry[QStringLiteral("summary")] = item.value(QStringLiteral("description")).toString();
+        static const QRegularExpression markup(QStringLiteral("<[^>]*>"));
+        entry[QStringLiteral("summary")] = item.value(QStringLiteral("description")).toString().remove(markup).simplified();
         entry[QStringLiteral("backend")] = QStringLiteral("AppImage");
         entry[QStringLiteral("scope")] = QStringLiteral("user");
         entry[QStringLiteral("repository")] = QStringLiteral("AppImageHub");
