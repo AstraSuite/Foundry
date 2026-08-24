@@ -25,6 +25,7 @@ bool FlatpakPlugin::isAvailable() const {
 
 namespace {
 constexpr int kQueryTimeoutMs = 15000;
+constexpr int kOperationTimeoutMs = 120000;
 constexpr int kSearchTimeoutMs = 5000;
 constexpr int kDetailsTimeoutMs = 10000;
 
@@ -189,6 +190,68 @@ QVariantList FlatpakPlugin::parseCollectionHits(const QByteArray& payload, QSet<
         results.append(item);
     }
     return results;
+}
+
+QVariantList FlatpakPlugin::parseRemotesOutput(const QString& output, const QString& scope) {
+    QVariantList remotes;
+
+    const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    for (const QString& line : lines) {
+        const QStringList parts = line.split(QLatin1Char('\t'), Qt::KeepEmptyParts);
+        const QString name = parts.value(0).trimmed();
+        if (name.isEmpty()) continue;
+
+        QVariantMap remote;
+        remote[QStringLiteral("name")] = name;
+        remote[QStringLiteral("title")] = parts.value(1).trimmed().isEmpty() ? name : parts.value(1).trimmed();
+        remote[QStringLiteral("url")] = parts.value(2).trimmed();
+        remote[QStringLiteral("scope")] = scope;
+        remotes.append(remote);
+    }
+    return remotes;
+}
+
+QVariantList FlatpakPlugin::getRemotes() {
+    QVariantList remotes;
+    if (!isAvailable()) return remotes;
+
+    const QStringList scopes{QStringLiteral("user"), QStringLiteral("system")};
+    for (const QString& scope : scopes) {
+        const astra::ProcessResult result = astra::runProcess(
+            QStringLiteral("flatpak"),
+            {QStringLiteral("remotes"), scopeArgument(scope), QStringLiteral("--columns=name,title,url")},
+            kQueryTimeoutMs);
+        remotes.append(parseRemotesOutput(result.output, scope));
+    }
+    return remotes;
+}
+
+bool FlatpakPlugin::addRemote(const QString& name, const QString& url, const QString& scope, QString* error) {
+    if (!isAvailable() || name.isEmpty() || url.isEmpty()) return false;
+
+    const astra::ProcessResult result = astra::runProcess(
+        QStringLiteral("flatpak"),
+        {QStringLiteral("remote-add"), scopeArgument(scope), QStringLiteral("--if-not-exists"), name, url},
+        kOperationTimeoutMs);
+
+    if (!result.succeeded() && error) {
+        *error = result.error.trimmed().isEmpty() ? result.output.trimmed() : result.error.trimmed();
+    }
+    return result.succeeded();
+}
+
+bool FlatpakPlugin::removeRemote(const QString& name, const QString& scope, QString* error) {
+    if (!isAvailable() || name.isEmpty()) return false;
+
+    const astra::ProcessResult result = astra::runProcess(
+        QStringLiteral("flatpak"),
+        {QStringLiteral("remote-delete"), scopeArgument(scope), name},
+        kOperationTimeoutMs);
+
+    if (!result.succeeded() && error) {
+        *error = result.error.trimmed().isEmpty() ? result.output.trimmed() : result.error.trimmed();
+    }
+    return result.succeeded();
 }
 
 QVariantList FlatpakPlugin::getCollection(const QString& collection, int limit) {

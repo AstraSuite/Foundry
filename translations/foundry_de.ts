@@ -553,7 +553,7 @@
         <translation>Marktplatz-Einstellungen</translation>
     </message>
     <message>
-        <location line="+7" />
+        <location line="+32" />
         <source>App Sources</source>
         <translation>Paketquellen</translation>
     </message>
@@ -613,7 +613,37 @@
         <translation>AppImage-Installation per Drag-and-drop und Desktop-Integration aktivieren</translation>
     </message>
     <message>
-        <location line="+12" />
+        <location line="+16" />
+        <source>Flatpak Remotes</source>
+        <translation>Flatpak-Remotes</translation>
+    </message>
+    <message>
+        <location line="+53" />
+        <source>System</source>
+        <translation>System</translation>
+    </message>
+    <message>
+        <location line="+0" />
+        <source>User</source>
+        <translation>Benutzer</translation>
+    </message>
+    <message>
+        <location line="+67" />
+        <source>Name</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <location line="+27" />
+        <source>Repository URL or .flatpakrepo file</source>
+        <translation>Repositorium-URL oder .flatpakrepo-Datei</translation>
+    </message>
+    <message>
+        <location line="+9" />
+        <source>Add</source>
+        <translation>Hinzufügen</translation>
+    </message>
+    <message>
+        <location line="+27" />
         <source>System Tray &amp; Background Daemon</source>
         <translation>System-Tray und Hintergrunddienst</translation>
     </message>
@@ -856,7 +886,27 @@
         <translation>%1 konnte nicht entfernt werden</translation>
     </message>
     <message>
-        <location line="+166" />
+        <location line="+113" />
+        <source>Added remote %1</source>
+        <translation>Remote %1 hinzugefügt</translation>
+    </message>
+    <message>
+        <location line="+10" />
+        <source>Could not add remote %1</source>
+        <translation>Remote %1 konnte nicht hinzugefügt werden</translation>
+    </message>
+    <message>
+        <location line="+18" />
+        <source>Removed remote %1</source>
+        <translation>Remote %1 entfernt</translation>
+    </message>
+    <message>
+        <location line="+10" />
+        <source>Could not remove remote %1</source>
+        <translation>Remote %1 konnte nicht entfernt werden</translation>
+    </message>
+    <message>
+        <location line="+76" />
         <source>All packages updated successfully</source>
         <translation>Alle Pakete erfolgreich aktualisiert</translation>
     </message>
@@ -950,7 +1000,7 @@
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../src/marketplace/plugins/flatpakplugin.cpp" line="+406" />
+        <location filename="../src/marketplace/plugins/flatpakplugin.cpp" line="+469" />
         <source>Network access</source>
         <translation>Netzwerkzugriff</translation>
     </message>
