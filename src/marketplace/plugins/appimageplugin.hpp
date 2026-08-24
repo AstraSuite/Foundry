@@ -1,6 +1,7 @@
 #pragma once
 
 #include "packageplugin.hpp"
+#include <QMutex>
 #include <QSettings>
 
 class AppImagePlugin : public IPackagePlugin {
@@ -27,7 +28,19 @@ public:
     bool update(const QString& packageId, const QVariantMap& options = {}, ProgressCallback progressCb = nullptr) override;
     bool launch(const QString& packageId) override;
 
+    QVariantList getCatalog();
+
+    static QVariantList parseCatalog(const QByteArray& payload);
+    static QString pickReleaseAsset(const QByteArray& payload, QString* fileName);
+
 private:
+    QVariantMap catalogEntry(const QString& packageId);
+    QString resolveDownloadUrl(const QString& repository, QString* fileName);
+    QString downloadRelease(const QString& url, const QString& fileName, ProgressCallback progressCb);
+
     bool m_enabled{true};
+    bool m_catalogLoaded{false};
+    QVariantList m_catalog;
+    QMutex m_catalogMutex;
     QSettings m_settings{QStringLiteral("astra-foundry"), QStringLiteral("Plugins")};
 };
