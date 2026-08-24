@@ -33,7 +33,9 @@ Every push and pull request builds on Arch Linux and runs the test suite (`.gith
 - QML follows the structure of the existing pages: tokens from `Foundry.Config` for sizing, spacing
   and typography, colours from `qs.services` (`Colours.palette`), and the shared components in
   `qml/qs/components` instead of raw `Rectangle`/`Text` items.
-- User visible strings go through `qsTr()`.
+- User visible strings go through `qsTr()` in QML and `tr()` in C++, and end up in `translations/`.
+  After adding or changing strings, run `cmake --build build --target update_translations` and translate
+  the new entries in `translations/foundry_de.ts` (or leave them empty, English is the fallback).
 
 ## Backends
 
