@@ -700,6 +700,67 @@ void PackageManager::fetchCollectionAsync(const QString& collection, int limit) 
     }));
 }
 
+QVariantList PackageManager::flatpakRemotes() const {
+    return m_flatpakPlugin ? m_flatpakPlugin->getRemotes() : QVariantList();
+}
+
+void PackageManager::addFlatpakRemote(const QString& name, const QString& url, const QString& scope) {
+    if (!m_flatpakPlugin || name.trimmed().isEmpty() || url.trimmed().isEmpty()) return;
+
+    const QString remoteName = name.trimmed();
+    const QString remoteUrl = url.trimmed();
+    appendLog(QStringLiteral("[%1] Adding Flatpak remote %2 (%3)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), remoteName, scope));
+
+    auto* watcher = new QFutureWatcher<QString>(this);
+    connect(watcher, &QFutureWatcher<QString>::finished, this, [this, watcher, remoteName] {
+        const QString error = watcher->result();
+        watcher->deleteLater();
+
+        if (error.isEmpty()) {
+            appendLog(QStringLiteral("[%1] Added Flatpak remote %2").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), remoteName));
+            emit remotesChanged();
+            emit remoteOperationFinished(true, tr("Added remote %1").arg(remoteName));
+        } else {
+            appendLog(QStringLiteral("[%1] %2").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), error));
+            emit remoteOperationFinished(false, error);
+        }
+    });
+
+    watcher->setFuture(QtConcurrent::run(&m_pluginPool, [this, remoteName, remoteUrl, scope] {
+        QString error;
+        if (m_flatpakPlugin->addRemote(remoteName, remoteUrl, scope, &error)) return QString();
+        return error.isEmpty() ? tr("Could not add remote %1").arg(remoteName) : error;
+    }));
+}
+
+void PackageManager::removeFlatpakRemote(const QString& name, const QString& scope) {
+    if (!m_flatpakPlugin || name.trimmed().isEmpty()) return;
+
+    const QString remoteName = name.trimmed();
+    appendLog(QStringLiteral("[%1] Removing Flatpak remote %2 (%3)").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), remoteName, scope));
+
+    auto* watcher = new QFutureWatcher<QString>(this);
+    connect(watcher, &QFutureWatcher<QString>::finished, this, [this, watcher, remoteName] {
+        const QString error = watcher->result();
+        watcher->deleteLater();
+
+        if (error.isEmpty()) {
+            appendLog(QStringLiteral("[%1] Removed Flatpak remote %2").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), remoteName));
+            emit remotesChanged();
+            emit remoteOperationFinished(true, tr("Removed remote %1").arg(remoteName));
+        } else {
+            appendLog(QStringLiteral("[%1] %2").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), error));
+            emit remoteOperationFinished(false, error);
+        }
+    });
+
+    watcher->setFuture(QtConcurrent::run(&m_pluginPool, [this, remoteName, scope] {
+        QString error;
+        if (m_flatpakPlugin->removeRemote(remoteName, scope, &error)) return QString();
+        return error.isEmpty() ? tr("Could not remove remote %1").arg(remoteName) : error;
+    }));
+}
+
 void PackageManager::fetchBuildScriptAsync(const QString& packageId) {
     if (packageId.isEmpty() || !m_aurPlugin) return;
 

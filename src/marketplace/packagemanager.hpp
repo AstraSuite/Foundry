@@ -99,6 +99,9 @@ public:
     Q_INVOKABLE void fetchPackageDetailsAsync(const QString& packageId, const QString& backend = QString());
     Q_INVOKABLE void fetchCollectionAsync(const QString& collection, int limit = 12);
     Q_INVOKABLE void fetchBuildScriptAsync(const QString& packageId);
+    Q_INVOKABLE QVariantList flatpakRemotes() const;
+    Q_INVOKABLE void addFlatpakRemote(const QString& name, const QString& url, const QString& scope = QStringLiteral("user"));
+    Q_INVOKABLE void removeFlatpakRemote(const QString& name, const QString& scope = QStringLiteral("user"));
     Q_INVOKABLE QVariantList checkForUpdates();
     Q_INVOKABLE void checkForUpdatesAsync();
     Q_INVOKABLE void updateAllPackages();
@@ -132,6 +135,8 @@ signals:
     void packageDetailsReady(const QVariantMap& details);
     void collectionReady(const QString& collection, const QVariantList& apps);
     void buildScriptReady(const QString& packageId, const QString& script);
+    void remotesChanged();
+    void remoteOperationFinished(bool success, const QString& message);
 
 private:
     void setBusy(bool busy);

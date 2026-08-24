@@ -33,6 +33,12 @@ public:
 
     QVariantList getCollection(const QString& collection, int limit);
 
+    QVariantList getRemotes();
+    bool addRemote(const QString& name, const QString& url, const QString& scope, QString* error = nullptr);
+    bool removeRemote(const QString& name, const QString& scope, QString* error = nullptr);
+
+    static QVariantList parseRemotesOutput(const QString& output, const QString& scope);
+
     static QVariantList permissionEntries(const QJsonObject& permissions);
     static QVariantList parseLocalPermissions(const QString& output);
     static QString formatBytes(qint64 bytes);
