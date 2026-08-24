@@ -22,6 +22,7 @@ PageBase {
 
     property int visibleCount: 15
     property bool isSearching: false
+    property int highlightedIndex: -1
 
     property var collections: ({})
     property bool feedLoading: false
@@ -31,6 +32,8 @@ PageBase {
         { key: "trending", label: qsTr("Trending") },
         { key: "recently-updated", label: qsTr("Recently updated") }
     ]
+
+    readonly property var visiblePackages: root.filteredPackages.slice(0, root.visibleCount)
 
     readonly property bool hasFeedContent: {
         for (let i = 0; i < root.homeSections.length; i++) {
@@ -68,8 +71,45 @@ PageBase {
         }
     }
 
+    function moveHighlight(delta: int): void {
+        const count = root.visiblePackages.length;
+        if (count === 0)
+            return;
+
+        let next = root.highlightedIndex + delta;
+        if (next < 0)
+            next = 0;
+        else if (next >= count)
+            next = count - 1;
+
+        root.highlightedIndex = next;
+    }
+
+    function openHighlighted(): void {
+        const packages = root.visiblePackages;
+        if (packages.length === 0)
+            return;
+
+        root.nState.selectedApp = packages[root.highlightedIndex >= 0 ? root.highlightedIndex : 0];
+        root.nState.openSubPage(1);
+    }
+
+    function scrollIntoView(itemY: real, itemHeight: real): void {
+        if (!root.flickable)
+            return;
+
+        const top = root.flickable.contentY;
+        const bottom = top + root.flickable.height;
+
+        if (itemY < top)
+            root.flickable.contentY = Math.max(0, itemY - Tokens.padding.large);
+        else if (itemY + itemHeight > bottom)
+            root.flickable.contentY = itemY + itemHeight - root.flickable.height + Tokens.padding.large;
+    }
+
     function performSearch(): void {
         root.visibleCount = 15;
+        root.highlightedIndex = -1;
         if (!root.hasActiveQuery) {
             root.packagesList = [];
             root.isSearching = false;
@@ -165,6 +205,12 @@ PageBase {
 
                 Layout.fillWidth: true
                 placeholderText: qsTr("Search Flatpak, Pacman, AUR...")
+
+                Keys.onDownPressed: root.moveHighlight(1)
+                Keys.onUpPressed: root.moveHighlight(-1)
+                Keys.onReturnPressed: root.openHighlighted()
+                Keys.onEnterPressed: root.openHighlighted()
+
                 onTextChanged: {
                     root.searchQuery = text;
                     if (root.activeCategory !== "" && text.trim().length > 0) {
@@ -675,16 +721,23 @@ PageBase {
 
         Repeater {
             id: pkgRepeater
-            model: (!root.hasActiveQuery || root.isSearching) ? [] : root.filteredPackages.slice(0, root.visibleCount)
+            model: (!root.hasActiveQuery || root.isSearching) ? [] : root.visiblePackages
 
             ConnectedRect {
                 id: cardItem
                 required property var modelData
                 required property int index
+                readonly property bool highlighted: root.highlightedIndex === index
                 width: root.width
                 first: index === 0
                 last: index === pkgRepeater.count - 1
                 implicitHeight: cardLayout.implicitHeight + Tokens.padding.medium * 2
+                color: highlighted ? Colours.palette.m3secondaryContainer : Colours.tPalette.m3surfaceContainer
+
+                onHighlightedChanged: {
+                    if (highlighted)
+                        root.scrollIntoView(cardItem.y, cardItem.implicitHeight);
+                }
 
                 property real animProgress: 0
 
