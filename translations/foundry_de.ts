@@ -356,7 +356,7 @@
 <context>
     <name>AppImagePlugin</name>
     <message>
-        <location filename="../src/marketplace/plugins/appimageplugin.cpp" line="+84" />
+        <location filename="../src/marketplace/plugins/appimageplugin.cpp" line="+292" />
         <source>new version available</source>
         <translation>neue Version verfügbar</translation>
     </message>
@@ -369,6 +369,42 @@
         <location line="+7" />
         <source>No installed AppImage matches %1</source>
         <translation>Kein installiertes AppImage passt zu %1</translation>
+    </message>
+    <message>
+        <location line="+23" />
+        <source>latest release</source>
+        <translation>neueste Veröffentlichung</translation>
+    </message>
+    <message>
+        <location line="+14" />
+        <source>Standalone AppImage application</source>
+        <translation>Eigenständige AppImage-Anwendung</translation>
+    </message>
+    <message>
+        <location line="+18" />
+        <location line="+29" />
+        <source>Installing %1</source>
+        <translation>%1 wird installiert</translation>
+    </message>
+    <message>
+        <location line="-19" />
+        <source>No AppImage file and no catalogue entry for %1</source>
+        <translation>Keine AppImage-Datei und kein Katalogeintrag für %1</translation>
+    </message>
+    <message>
+        <location line="+4" />
+        <source>Looking up the latest release of %1</source>
+        <translation>Neueste Veröffentlichung von %1 wird gesucht</translation>
+    </message>
+    <message>
+        <location line="+5" />
+        <source>The latest release of %1 has no AppImage for this architecture</source>
+        <translation>Die neueste Veröffentlichung von %1 enthält kein AppImage für diese Architektur</translation>
+    </message>
+    <message>
+        <location line="+6" />
+        <source>Downloading %1 failed</source>
+        <translation>Herunterladen von %1 fehlgeschlagen</translation>
     </message>
 </context>
 <context>
@@ -1123,6 +1159,11 @@
         <location line="+2" />
         <source>Path: %1</source>
         <translation>Pfad: %1</translation>
+    </message>
+    <message>
+        <location filename="../src/marketplace/plugins/appimageplugin.cpp" line="-186" />
+        <source>Downloading %1 (%2%)</source>
+        <translation>%1 wird heruntergeladen (%2 %)</translation>
     </message>
 </context>
 <context>
