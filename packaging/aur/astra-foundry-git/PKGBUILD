@@ -1,0 +1,40 @@
+# Maintainer: DiM <dim@astrasuite.dev>
+
+pkgname=astra-foundry-git
+pkgver=1.2.0.r0.ge3af300
+pkgrel=1
+pkgdesc="Unified package manager for Flatpak, Pacman, AUR and AppImage with a graphical and a command line interface (git)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/AstraSuite/Foundry"
+license=('GPL-3.0-or-later')
+depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'hicolor-icon-theme')
+makedepends=('cmake' 'ninja' 'git' 'qt6-shadertools' 'qt6-tools')
+optdepends=('flatpak: Flatpak and Flathub packages'
+            'pacman-contrib: update checks for native packages'
+            'paru: AUR support'
+            'yay: AUR support'
+            'polkit: authentication for pacman operations'
+            'appimageupdatetool: AppImage updates'
+            'desktop-file-utils: AppImage desktop integration')
+provides=('astra-foundry')
+conflicts=('astra-foundry' 'astra-foundry-bin' 'astramarket-git')
+replaces=('astramarket-git')
+source=("$pkgname::git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() {
+    cd "$pkgname"
+    git describe --long --tags --abbrev=7 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' ||
+        printf "0.r%s.g%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+build() {
+    cmake -B build -S "$pkgname" -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build
+}
