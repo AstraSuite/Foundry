@@ -1,0 +1,34 @@
+# Maintainer: DiM <dim@astrasuite.dev>
+
+pkgname=astra-foundry
+pkgver=1.2.0
+pkgrel=1
+pkgdesc="Unified package manager for Flatpak, Pacman, AUR and AppImage with a graphical and a command line interface"
+arch=('x86_64' 'aarch64')
+url="https://github.com/AstraSuite/Foundry"
+license=('GPL-3.0-or-later')
+depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'hicolor-icon-theme')
+makedepends=('cmake' 'ninja' 'qt6-shadertools' 'qt6-tools')
+optdepends=('flatpak: Flatpak and Flathub packages'
+            'pacman-contrib: update checks for native packages'
+            'paru: AUR support'
+            'yay: AUR support'
+            'polkit: authentication for pacman operations'
+            'appimageupdatetool: AppImage updates'
+            'desktop-file-utils: AppImage desktop integration')
+provides=('astra-foundry')
+conflicts=('astra-foundry-bin' 'astra-foundry-git' 'astramarket')
+replaces=('astramarket')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('90525f7a292b4ea4d407a3919985568c4ec693442e24f83ad3cfb5db3c41afd4')
+
+build() {
+    cmake -B build -S "Foundry-$pkgver" -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build
+}
