@@ -92,6 +92,17 @@ qt_add_resources(astra "qml_resources"
     FILES ${QML_FILES}
 )
 
+find_package(Qt6 QUIET COMPONENTS LinguistTools)
+
+if(Qt6LinguistTools_FOUND)
+    qt_add_translations(astra
+        TS_FILES translations/foundry_de.ts
+        RESOURCE_PREFIX "/i18n"
+    )
+else()
+    message(STATUS "Qt Linguist tools not found, Foundry is built without translations")
+endif()
+
 option(ASTRA_BUILD_TESTS "Build the Foundry unit tests" OFF)
 
 if(ASTRA_BUILD_TESTS)

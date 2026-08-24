@@ -238,7 +238,7 @@ PageBase {
                             }
 
                             StyledText {
-                                text: chip.modelData
+                                text: chip.modelData === "All" ? qsTr("All") : chip.modelData
                                 font: Tokens.font.label.large
                                 color: chip.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
                             }
@@ -327,14 +327,14 @@ PageBase {
 
                     Repeater {
                         model: [
-                            { name: "Photo & Video", icon: "photo_camera" },
-                            { name: "Music & Audio", icon: "headphones" },
-                            { name: "Productivity", icon: "work" },
-                            { name: "Communication & News", icon: "forum" },
-                            { name: "Education & Science", icon: "school" },
-                            { name: "Games", icon: "sports_esports" },
-                            { name: "Utilities", icon: "build" },
-                            { name: "Development", icon: "code" }
+                            { name: "Photo & Video", label: qsTr("Photo & Video"), icon: "photo_camera" },
+                            { name: "Music & Audio", label: qsTr("Music & Audio"), icon: "headphones" },
+                            { name: "Productivity", label: qsTr("Productivity"), icon: "work" },
+                            { name: "Communication & News", label: qsTr("Communication & News"), icon: "forum" },
+                            { name: "Education & Science", label: qsTr("Education & Science"), icon: "school" },
+                            { name: "Games", label: qsTr("Games"), icon: "sports_esports" },
+                            { name: "Utilities", label: qsTr("Utilities"), icon: "build" },
+                            { name: "Development", label: qsTr("Development"), icon: "code" }
                         ]
 
                         Rectangle {
@@ -417,7 +417,7 @@ PageBase {
                                 }
 
                                 StyledText {
-                                    text: modelData.name
+                                    text: modelData.label ?? modelData.name
                                     font: Tokens.font.label.large
                                     color: pillItem.isSelected ? Colours.palette.m3onPrimary : Colours.palette.m3onPrimaryContainer
                                     Layout.alignment: Qt.AlignVCenter

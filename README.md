@@ -162,6 +162,21 @@ sudo rm -f /usr/share/polkit-1/rules.d/10-astramarket-pacman.rules
 
 For creating and installing custom package sources or scrapers, see [PLUGINS](PLUGINS.md).
 
+## Translations
+
+The interface is translatable and ships with German. Translation files live in `translations/` and are
+compiled into the binary when the Qt Linguist tools are available (`qt6-tools` on Arch); without them the
+build falls back to English. The language is picked from the system locale at startup.
+
+Refresh the strings after changing the UI:
+
+```bash
+cmake --build build --target update_translations
+```
+
+To add a language, copy `translations/foundry_de.ts` to `translations/foundry_<code>.ts`, add it to the
+`qt_add_translations()` call in `CMakeLists.txt` and translate it with Qt Linguist.
+
 ## Contributing
 
 Build instructions, the test setup and the code style are described in [CONTRIBUTING](CONTRIBUTING.md).

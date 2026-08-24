@@ -24,7 +24,8 @@ jobs:
             qt6-base \
             qt6-declarative \
             qt6-shadertools \
-            qt6-svg
+            qt6-svg \
+            qt6-tools
 
       - name: Mark git safe directory
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"

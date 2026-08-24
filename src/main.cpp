@@ -6,6 +6,8 @@
 #include <QIcon>
 #include <QDir>
 #include <QCommandLineParser>
+#include <QLocale>
+#include <QTranslator>
 #include <QStandardPaths>
 #include <QCommandLineOption>
 #include <QProcess>
@@ -52,6 +54,15 @@ static void migrateLegacyPaths() {
     for (const auto& [legacy, current] : locations) {
         if (!QFileInfo::exists(legacy) || QFileInfo::exists(current)) continue;
         QDir().rename(legacy, current);
+    }
+}
+
+static void installTranslations(QCoreApplication& app) {
+    auto* translator = new QTranslator(&app);
+    if (translator->load(QLocale(), QStringLiteral("foundry"), QStringLiteral("_"), QStringLiteral(":/i18n"))) {
+        QCoreApplication::installTranslator(translator);
+    } else {
+        delete translator;
     }
 }
 
@@ -128,6 +139,7 @@ int main(int argc, char* argv[]) {
     app.setDesktopFileName(QStringLiteral("astra"));
     app.setApplicationVersion(QStringLiteral(ASTRA_VERSION));
     app.setQuitOnLastWindowClosed(false);
+    installTranslations(app);
 
     const QString iconPath = QStringLiteral(":/assets/icons/astra-foundry.svg");
     if (QFile::exists(iconPath)) {
