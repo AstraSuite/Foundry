@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import AstraMarket.Config
+import Foundry.Config
 import qs.components
 import qs.services
 

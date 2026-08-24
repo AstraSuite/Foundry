@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import AstraMarket.Config
+import Foundry.Config
 import qs.components
 import qs.components.controls
 import qs.components.containers
@@ -34,7 +34,7 @@ PageBase {
 
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
-                    text: "AstraMarket"
+                    text: "Foundry"
                     font: Tokens.font.headline.large
                     color: Colours.palette.m3onSurface
                 }

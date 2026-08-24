@@ -1,8 +1,8 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import AstraMarket.Blobs
-import AstraMarket.Config
+import Foundry.Blobs
+import Foundry.Config
 import qs.components
 import qs.components.controls
 import qs.services

@@ -22,7 +22,7 @@ ThemeWatcher* ThemeWatcher::create(QQmlEngine*, QJSEngine*) {
 
 ThemeWatcher::ThemeWatcher(QObject* parent)
     : QObject(parent) {
-    QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+    QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
     m_syncScheme = settings.value(QStringLiteral("theme/syncScheme"), true).toBool();
     m_syncTokens = settings.value(QStringLiteral("theme/syncTokens"), true).toBool();
 
@@ -62,7 +62,7 @@ ThemeWatcher::ThemeWatcher(QObject* parent)
 void ThemeWatcher::setSyncScheme(bool sync) {
     if (m_syncScheme != sync) {
         m_syncScheme = sync;
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
         settings.setValue(QStringLiteral("theme/syncScheme"), sync);
         emit syncSchemeChanged();
         reload();
@@ -72,7 +72,7 @@ void ThemeWatcher::setSyncScheme(bool sync) {
 void ThemeWatcher::setSyncTokens(bool sync) {
     if (m_syncTokens != sync) {
         m_syncTokens = sync;
-        QSettings settings(QStringLiteral("AstraMarket"), QStringLiteral("astra"));
+        QSettings settings(QStringLiteral("astra-foundry"), QStringLiteral("astra"));
         settings.setValue(QStringLiteral("theme/syncTokens"), sync);
         emit syncTokensChanged();
         applyTokensSync();
@@ -89,7 +89,7 @@ QString ThemeWatcher::getSchemeFilePath() const {
 }
 
 void ThemeWatcher::applyFallbackColours() {
-    m_name = QStringLiteral("astramarket");
+    m_name = QStringLiteral("astra-foundry");
     m_mode = QStringLiteral("dark");
     m_flavour = QStringLiteral("default");
     m_variant = QStringLiteral("content");

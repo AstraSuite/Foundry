@@ -47,5 +47,5 @@ private:
     QString resolveScope(const QString& packageId, const QVariantMap& options);
 
     bool m_enabled{true};
-    QSettings m_settings{QStringLiteral("AstraMarket"), QStringLiteral("Plugins")};
+    QSettings m_settings{QStringLiteral("astra-foundry"), QStringLiteral("Plugins")};
 };

@@ -202,7 +202,7 @@ QVariantList FlatpakPlugin::getCollection(const QString& collection, int limit) 
     url.setQuery(query);
 
     QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("astra-foundry/1.0"));
     request.setTransferTimeout(kDetailsTimeoutMs);
 
     QEventLoop loop;
@@ -256,7 +256,7 @@ QVariantList FlatpakPlugin::search(const QString& query, const QVariantMap& opti
             QNetworkAccessManager nam;
             QUrl url(QStringLiteral("https://flathub.org/api/v2/collection/category/") + cat);
             QNetworkRequest req(url);
-            req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+            req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("astra-foundry/1.0"));
             req.setTransferTimeout(kSearchTimeoutMs);
 
             QEventLoop loop;
@@ -275,7 +275,7 @@ QVariantList FlatpakPlugin::search(const QString& query, const QVariantMap& opti
         QUrl url(QStringLiteral("https://flathub.org/api/v2/search"));
         QNetworkRequest req(url);
         req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
-        req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+        req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("astra-foundry/1.0"));
         req.setTransferTimeout(kSearchTimeoutMs);
 
         QJsonObject jsonBody;
@@ -361,7 +361,7 @@ QByteArray httpGet(const QUrl& url, int timeoutMs) {
     QNetworkAccessManager manager;
 
     QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("astra-foundry/1.0"));
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
     request.setTransferTimeout(timeoutMs);
 
@@ -512,7 +512,7 @@ QVariantMap FlatpakPlugin::getDetails(const QString& packageId) {
     QNetworkAccessManager nam;
     QUrl url(QStringLiteral("https://flathub.org/api/v2/appstream/") + packageId);
     QNetworkRequest req(url);
-    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("AstraMarket/1.0"));
+    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("astra-foundry/1.0"));
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
     req.setTransferTimeout(kDetailsTimeoutMs);
 

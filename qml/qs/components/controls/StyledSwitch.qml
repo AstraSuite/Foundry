@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import QtQuick.Templates
-import AstraMarket.Config
+import Foundry.Config
 import qs.components
 import qs.services
 

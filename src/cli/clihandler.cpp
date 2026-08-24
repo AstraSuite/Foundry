@@ -74,11 +74,11 @@ bool looksLikeAppImage(const QString& value) {
 
 void CliHandler::printVersion() {
     std::cout << bold() << cyan() << "astra" << reset() << " version " << green() << ASTRA_VERSION << reset()
-              << " (AstraMarket Universal Package Manager)\n";
+              << " (Foundry Universal Package Manager)\n";
 }
 
 void CliHandler::printHelp() {
-    std::cout << bold() << cyan() << "AstraMarket CLI" << reset() << " - Unified Linux package management\n\n"
+    std::cout << bold() << cyan() << "Foundry CLI" << reset() << " - Unified Linux package management\n\n"
               << bold() << "USAGE:" << reset() << "\n"
               << "  astra <COMMAND> [OPTIONS]\n\n"
               << bold() << "COMMANDS:" << reset() << "\n"

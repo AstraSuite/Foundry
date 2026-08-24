@@ -49,7 +49,7 @@ private:
     QString m_updatesCmd;
     QString m_launchCmd;
 
-    QSettings m_settings{QStringLiteral("AstraMarket"), QStringLiteral("Plugins")};
+    QSettings m_settings{QStringLiteral("astra-foundry"), QStringLiteral("Plugins")};
 
     struct ScriptResult {
         int exitCode{-1};

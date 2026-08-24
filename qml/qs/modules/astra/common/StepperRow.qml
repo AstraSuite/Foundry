@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import AstraMarket.Config
+import Foundry.Config
 import qs.components
 import qs.components.controls
 import qs.services

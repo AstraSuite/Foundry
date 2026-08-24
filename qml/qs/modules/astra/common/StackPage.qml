@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Controls
-import AstraMarket.Config
+import Foundry.Config
 import qs.components
 import qs.modules.astra
 

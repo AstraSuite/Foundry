@@ -1,5 +1,5 @@
 import QtQuick
-import AstraMarket.Config
+import Foundry.Config
 
 ColorAnimation {
     duration: Tokens.anim.durations.expressiveSlowEffects

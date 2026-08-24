@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
 import Caelestia.Components
-import AstraMarket.Config
+import Foundry.Config
 import qs.components
 import qs.services
 

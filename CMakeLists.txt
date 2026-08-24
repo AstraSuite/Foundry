@@ -15,7 +15,7 @@ else()
     set(ASTRA_VERSION_STR "1.1.0")
 endif()
 
-project(AstraMarket VERSION ${ASTRA_VERSION_STR} LANGUAGES CXX)
+project(astra-foundry VERSION ${ASTRA_VERSION_STR} LANGUAGES CXX)
 
 add_compile_definitions(ASTRA_VERSION="${ASTRA_VERSION_STR}")
 
@@ -79,7 +79,7 @@ target_link_libraries(astra PRIVATE
 qt_add_resources(astra "resources"
     PREFIX "/"
     FILES
-        assets/icons/AstraMarket.svg
+        assets/icons/astra-foundry.svg
         assets/icons/tray-dark.svg
         assets/icons/tray-light.svg
         assets/fonts/GoogleSansFlex-VariableFont_GRAD,ROND,opsz,slnt,wdth,wght.ttf
@@ -92,7 +92,7 @@ qt_add_resources(astra "qml_resources"
     FILES ${QML_FILES}
 )
 
-option(ASTRA_BUILD_TESTS "Build the AstraMarket unit tests" OFF)
+option(ASTRA_BUILD_TESTS "Build the Foundry unit tests" OFF)
 
 if(ASTRA_BUILD_TESTS)
     enable_testing()
@@ -135,16 +135,16 @@ install(FILES assets/astra.desktop
     DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
 )
 
-install(FILES assets/icons/AstraMarket.svg
+install(FILES assets/icons/astra-foundry.svg
     DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
-    RENAME AstraMarket.svg
+    RENAME astra-foundry.svg
 )
 
 install(FILES assets/icons/tray-dark.svg assets/icons/tray-light.svg
     DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
 )
 
-install(FILES assets/polkit/com.astramarket.pacman.policy
+install(FILES assets/polkit/com.astra-foundry.pacman.policy
     DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions
 )
 

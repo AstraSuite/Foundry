@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Window
 import qs.services
 import qs.modules.astra
-import AstraMarket.Market 1.0
-import AstraMarket.Tray 1.0
+import Foundry.Market 1.0
+import Foundry.Tray 1.0
 
 Window {
     id: window
@@ -12,7 +12,7 @@ Window {
     height: 600
     minimumWidth: 800
     minimumHeight: 500
-    title: "AstraMarket"
+    title: "Foundry"
     color: Colours.palette.m3surface
 
     onClosing: (close) => {

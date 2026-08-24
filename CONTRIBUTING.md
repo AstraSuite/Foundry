@@ -1,4 +1,4 @@
-# Contributing to AstraMarket
+# Contributing to Foundry
 
 ## Building
 
@@ -30,7 +30,7 @@ Every push and pull request builds on Arch Linux and runs the test suite (`.gith
 - `.clang-format` describes the C++ style: four spaces, attached braces, pointers bound to the type.
   Format the lines you touch, not whole files.
 - `.editorconfig` covers the rest (LF, UTF-8, trailing whitespace).
-- QML follows the structure of the existing pages: tokens from `AstraMarket.Config` for sizing, spacing
+- QML follows the structure of the existing pages: tokens from `Foundry.Config` for sizing, spacing
   and typography, colours from `qs.services` (`Colours.palette`), and the shared components in
   `qml/qs/components` instead of raw `Rectangle`/`Text` items.
 - User visible strings go through `qsTr()`.
