@@ -68,7 +68,7 @@ jobs:
           mkdir -p "dist/${DIST_DIR}/share/polkit-1/actions"
 
           cp build/foundry "dist/${DIST_DIR}/bin/"
-          cp build/astra "dist/astra-foundry-linux-x86_64"
+          cp build/foundry "dist/astra-foundry-linux-x86_64"
           cp assets/foundry.desktop "dist/${DIST_DIR}/share/applications/"
           cp assets/icons/astra-foundry.svg "dist/${DIST_DIR}/share/icons/hicolor/scalable/apps/"
           cp assets/icons/tray-dark.svg "dist/${DIST_DIR}/share/icons/hicolor/scalable/apps/"
