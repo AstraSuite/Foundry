@@ -6,17 +6,12 @@ import qs.services
 Item {
     id: root
 
-    readonly property real designSize: 894
+    readonly property real designSize: 1000
     property bool skipIntroAnimation: false
 
-    property real tag1Progress: 0.0
-    property real tag2Progress: 0.0
-    property real tag3Progress: 0.0
-    property real clickSpread1: 0.0
-    property real clickSpread2: 0.0
-    property real clickSpread3: 0.0
-    property real starScale: 0.0
-    property real starOpacity: 0.0
+    property real outerProgress: 1.0
+    property real ringProgress: 1.0
+    property real glyphProgress: 1.0
 
     implicitWidth: 128
     implicitHeight: 128
@@ -26,84 +21,71 @@ Item {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            if (!introAnim.running && !clickFanSeqAnim.running) {
-                clickFanSeqAnim.restart();
+            if (!introAnim.running && !clickSpinAnim.running) {
+                clickSpinAnim.restart();
             }
         }
     }
 
     SequentialAnimation {
-        id: clickFanSeqAnim
+        id: clickSpinAnim
         running: false
 
         ParallelAnimation {
             NumberAnimation {
-                target: root
-                property: "clickSpread1"
-                from: 0.0
-                to: 1.0
-                duration: 200
-                easing.type: Easing.OutCubic
+                target: logo
+                property: "rotation"
+                from: 0
+                to: 360
+                duration: 700
+                easing.type: Easing.InOutCubic
             }
 
             SequentialAnimation {
-                PauseAnimation { duration: 40 }
                 NumberAnimation {
-                    target: root
-                    property: "clickSpread2"
-                    from: 0.0
-                    to: 1.0
-                    duration: 210
+                    target: logo
+                    property: "scale"
+                    from: root.implicitWidth / root.designSize
+                    to: (root.implicitWidth / root.designSize) * 1.12
+                    duration: 300
                     easing.type: Easing.OutCubic
+                }
+
+                NumberAnimation {
+                    target: logo
+                    property: "scale"
+                    from: (root.implicitWidth / root.designSize) * 1.12
+                    to: root.implicitWidth / root.designSize
+                    duration: 400
+                    easing.type: Easing.OutBack
+                    easing.overshoot: 1.2
                 }
             }
 
             SequentialAnimation {
-                PauseAnimation { duration: 80 }
                 NumberAnimation {
                     target: root
-                    property: "clickSpread3"
-                    from: 0.0
+                    property: "glyphProgress"
+                    from: 1.0
+                    to: 0.55
+                    duration: 250
+                    easing.type: Easing.InOutQuad
+                }
+
+                NumberAnimation {
+                    target: root
+                    property: "glyphProgress"
+                    from: 0.55
                     to: 1.0
-                    duration: 220
-                    easing.type: Easing.OutCubic
+                    duration: 450
+                    easing.type: Easing.OutBack
+                    easing.overshoot: 1.6
                 }
             }
         }
 
-        ParallelAnimation {
-            NumberAnimation {
-                target: root
-                property: "clickSpread1"
-                to: 0.0
-                duration: 450
-                easing.type: Easing.OutBack
-                easing.overshoot: 1.8
-            }
-
-            SequentialAnimation {
-                PauseAnimation { duration: 60 }
-                NumberAnimation {
-                    target: root
-                    property: "clickSpread2"
-                    to: 0.0
-                    duration: 450
-                    easing.type: Easing.OutBack
-                    easing.overshoot: 1.8
-                }
-            }
-
-            SequentialAnimation {
-                PauseAnimation { duration: 120 }
-                NumberAnimation {
-                    target: root
-                    property: "clickSpread3"
-                    to: 0.0
-                    duration: 450
-                    easing.type: Easing.OutBack
-                    easing.overshoot: 1.8
-                }
-            }
+        ScriptAction {
+            script: logo.rotation = 0
         }
     }
 
@@ -118,7 +100,7 @@ Item {
         transformOrigin: Item.Center
 
         rotation: 0.0
-        opacity: 0.0
+        opacity: 1.0
 
         SequentialAnimation {
             id: introAnim
@@ -126,92 +108,15 @@ Item {
 
             ScriptAction {
                 script: {
-                    root.tag1Progress = 0.0;
-                    root.tag2Progress = 0.0;
-                    root.tag3Progress = 0.0;
-                    root.clickSpread1 = 0.0;
-                    root.clickSpread2 = 0.0;
-                    root.clickSpread3 = 0.0;
-                    root.starScale = 0.0;
-                    root.starOpacity = 0.0;
-                    logo.rotation = 0.0;
+                    root.outerProgress = 0.0;
+                    root.ringProgress = 0.0;
+                    root.glyphProgress = 0.0;
+                    logo.rotation = -135.0;
                     logo.opacity = 0.0;
                 }
             }
 
             ParallelAnimation {
-                SequentialAnimation {
-                    NumberAnimation {
-                        target: logo
-                        property: "rotation"
-                        from: 0
-                        to: 750
-                        duration: 1000
-                        easing.type: Easing.OutCubic
-                    }
-
-                    NumberAnimation {
-                        target: logo
-                        property: "rotation"
-                        from: 750
-                        to: 710
-                        duration: 300
-                        easing.type: Easing.InOutQuad
-                    }
-
-                    NumberAnimation {
-                        target: logo
-                        property: "rotation"
-                        from: 710
-                        to: 725
-                        duration: 350
-                        easing.type: Easing.InOutQuad
-                    }
-
-                    NumberAnimation {
-                        target: logo
-                        property: "rotation"
-                        from: 725
-                        to: 720
-                        duration: 250
-                        easing.type: Easing.OutQuad
-                    }
-
-                    ScriptAction {
-                        script: logo.rotation = 0
-                    }
-                }
-
-                SequentialAnimation {
-                    NumberAnimation {
-                        target: logo
-                        property: "scale"
-                        from: 0.0
-                        to: (root.implicitWidth / root.designSize) * 1.08
-                        duration: 1000
-                        easing.type: Easing.OutCubic
-                    }
-
-                    NumberAnimation {
-                        target: logo
-                        property: "scale"
-                        from: (root.implicitWidth / root.designSize) * 1.08
-                        to: (root.implicitWidth / root.designSize) * 0.96
-                        duration: 200
-                        easing.type: Easing.InOutQuad
-                    }
-
-                    NumberAnimation {
-                        target: logo
-                        property: "scale"
-                        from: (root.implicitWidth / root.designSize) * 0.96
-                        to: root.implicitWidth / root.designSize
-                        duration: 250
-                        easing.type: Easing.OutBack
-                        easing.overshoot: 1.05
-                    }
-                }
-
                 NumberAnimation {
                     target: logo
                     property: "opacity"
@@ -220,337 +125,153 @@ Item {
                     duration: 600
                     easing.type: Easing.InOutQuad
                 }
-            }
 
-            ParallelAnimation {
+                NumberAnimation {
+                    target: logo
+                    property: "rotation"
+                    from: -135
+                    to: 0
+                    duration: 950
+                    easing.type: Easing.OutCubic
+                }
+
+                SequentialAnimation {
+                    PauseAnimation { duration: 120 }
+                    NumberAnimation {
+                        target: logo
+                        property: "scale"
+                        from: (root.implicitWidth / root.designSize) * 0.7
+                        to: root.implicitWidth / root.designSize
+                        duration: 830
+                        easing.type: Easing.OutBack
+                        easing.overshoot: 1.15
+                    }
+                }
 
                 NumberAnimation {
                     target: root
-                    property: "tag1Progress"
+                    property: "outerProgress"
                     from: 0.0
                     to: 1.0
-                    duration: 550
-                    easing.type: Easing.OutBack
-                    easing.overshoot: 1.4
+                    duration: 950
+                    easing.type: Easing.OutCubic
                 }
 
                 SequentialAnimation {
-                    PauseAnimation { duration: 140 }
+                    PauseAnimation { duration: 180 }
                     NumberAnimation {
                         target: root
-                        property: "tag2Progress"
+                        property: "ringProgress"
                         from: 0.0
                         to: 1.0
-                        duration: 550
+                        duration: 800
                         easing.type: Easing.OutBack
-                        easing.overshoot: 1.4
+                        easing.overshoot: 1.3
                     }
                 }
 
                 SequentialAnimation {
-                    PauseAnimation { duration: 280 }
+                    PauseAnimation { duration: 450 }
                     NumberAnimation {
                         target: root
-                        property: "tag3Progress"
+                        property: "glyphProgress"
                         from: 0.0
                         to: 1.0
-                        duration: 550
+                        duration: 600
                         easing.type: Easing.OutBack
-                        easing.overshoot: 1.4
-                    }
-                }
-
-                SequentialAnimation {
-                    PauseAnimation { duration: 200 }
-                    ParallelAnimation {
-                        NumberAnimation {
-                            target: root
-                            property: "starOpacity"
-                            from: 0.0
-                            to: 1.0
-                            duration: 400
-                            easing.type: Easing.InOutQuad
-                        }
-
-                        SequentialAnimation {
-                            NumberAnimation {
-                                target: root
-                                property: "starScale"
-                                from: 0.0
-                                to: 1.15
-                                duration: 450
-                                easing.type: Easing.OutBack
-                                easing.overshoot: 1.5
-                            }
-
-                            NumberAnimation {
-                                target: root
-                                property: "starScale"
-                                from: 1.15
-                                to: 1.0
-                                duration: 250
-                                easing.type: Easing.InOutQuad
-                            }
-                        }
+                        easing.overshoot: 1.5
                     }
                 }
             }
         }
 
         Shape {
-            id: moonCircle
-            width: 894
-            height: 894
+            id: outerSwoosh
+            width: 1000
+            height: 1000
             z: 1
             preferredRendererType: Shape.CurveRenderer
 
+            opacity: Math.min(1.0, root.outerProgress * 1.8)
+
+            transform: [
+                Rotation {
+                    origin.x: 500
+                    origin.y: 500
+                    angle: (1.0 - root.outerProgress) * -260
+                }
+            ]
+
             ShapePath {
-                fillColor: Colours.palette.m3surfaceContainerHighest
+                fillColor: Colours.palette.m3onSurface
                 strokeColor: "transparent"
-                PathAngleArc {
-                    centerX: 447
-                    centerY: 447
-                    radiusX: 447
-                    radiusY: 447
-                    startAngle: 0
-                    sweepAngle: 360
+
+                PathSvg {
+                    path: "M999.991 497.412C998.599 277.689 820.051 100 600 100C379.086 100 200 279.086 200 500C200 720.914 379.086 900 600 900C820.051 900 998.601 722.31 999.992 502.587L999.99 503.233C998.251 777.888 775.064 1000 500 1000C223.858 1000 0 776.142 0 500C0 223.858 223.858 0 500 0C775.279 0 998.598 222.46 999.991 497.412Z"
                 }
             }
         }
 
-        Item {
-            id: clippedContainer
-            width: 894
-            height: 894
+        Shape {
+            id: innerRing
+            width: 1000
+            height: 1000
             z: 2
-            clip: true
+            preferredRendererType: Shape.CurveRenderer
 
-            Shape {
-                id: tag1
-                width: 894
-                height: 894
-                z: 2
-                preferredRendererType: Shape.CurveRenderer
+            opacity: Math.min(1.0, root.ringProgress * 1.8)
 
-                opacity: Math.min(1.0, root.tag1Progress * 1.8)
-
-                transform: [
-                    Translate {
-                        x: (1.0 - root.tag1Progress) * -220 - root.clickSpread1 * 45
-                        y: (1.0 - root.tag1Progress) * 40 - root.clickSpread1 * 25
-                    },
-                    Rotation {
-                        origin.x: 220
-                        origin.y: 450
-                        angle: (1.0 - root.tag1Progress) * 55 - root.clickSpread1 * 18
-                    },
-                    Scale {
-                        origin.x: 220
-                        origin.y: 450
-                        xScale: 0.65 + 0.35 * root.tag1Progress
-                        yScale: 0.65 + 0.35 * root.tag1Progress
-                    }
-                ]
-
-                ShapePath {
-                    fillColor: Colours.palette.m3onSurface
-                    strokeColor: Colours.palette.m3surfaceContainerHighest
-                    strokeWidth: 20
-
-                    PathSvg {
-                        path: "M301.229 286.362C313.203 266.497 339.509 260.947 358.486 274.284L421.092 318.282C429.374 324.103 435.141 332.847 437.231 342.752L476.397 528.44C480.957 550.056 467.13 571.275 445.514 575.834L343.408 597.371C321.792 601.931 300.573 588.104 296.014 566.488L256.847 380.8C254.758 370.895 256.502 360.566 261.728 351.896L301.229 286.362ZM336.488 311.757C331.799 312.746 328.801 317.349 329.79 322.037C330.779 326.726 335.381 329.725 340.069 328.736C344.758 327.747 347.757 323.145 346.769 318.456C345.78 313.767 341.177 310.768 336.488 311.757Z"
-                    }
+            transform: [
+                Scale {
+                    origin.x: 600
+                    origin.y: 500
+                    xScale: 0.5 + 0.5 * root.ringProgress
+                    yScale: 0.5 + 0.5 * root.ringProgress
+                },
+                Rotation {
+                    origin.x: 600
+                    origin.y: 500
+                    angle: (1.0 - root.ringProgress) * 180
                 }
-            }
+            ]
 
-            Shape {
-                id: tag2
-                width: 894
-                height: 894
-                z: 3
-                preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                fillColor: Colours.palette.m3primary
+                strokeColor: "transparent"
 
-                opacity: Math.min(1.0, root.tag2Progress * 1.8)
-
-                transform: [
-                    Translate {
-                        x: (1.0 - root.tag2Progress) * -220
-                        y: (1.0 - root.tag2Progress) * 40 + root.clickSpread2 * 30
-                    },
-                    Rotation {
-                        origin.x: 220
-                        origin.y: 450
-                        angle: (1.0 - root.tag2Progress) * 55
-                    },
-                    Scale {
-                        origin.x: 220
-                        origin.y: 450
-                        xScale: 0.65 + 0.35 * root.tag2Progress
-                        yScale: 0.65 + 0.35 * root.tag2Progress
-                    }
-                ]
-
-                ShapePath {
-                    fillColor: Colours.palette.m3onSurface
-                    strokeColor: Colours.palette.m3surfaceContainerHighest
-                    strokeWidth: 20
-
-                    PathSvg {
-                        path: "M497.174 318.04C517.977 307.781 543.117 317.31 551.893 338.781L584.988 419.755C588.818 429.125 588.953 439.6 585.365 449.066L510.638 646.206C502.808 666.863 479.714 677.262 459.057 669.432L347.507 627.149C326.85 619.319 316.452 596.225 324.281 575.568L399.009 378.427C402.597 368.961 409.641 361.207 418.72 356.73L497.174 318.04ZM511.895 361.753C506.537 359.723 500.548 362.419 498.517 367.777C496.486 373.135 499.183 379.124 504.54 381.155C509.898 383.186 515.887 380.489 517.918 375.131C519.949 369.773 517.252 363.784 511.895 361.753Z"
-                    }
-                }
-            }
-
-            Shape {
-                id: tag3
-                width: 894
-                height: 894
-                z: 4
-                preferredRendererType: Shape.CurveRenderer
-
-                opacity: Math.min(1.0, root.tag3Progress * 1.8)
-
-                transform: [
-                    Translate {
-                        x: (1.0 - root.tag3Progress) * -220 + root.clickSpread3 * 55
-                        y: (1.0 - root.tag3Progress) * 40 - root.clickSpread3 * 20
-                    },
-                    Rotation {
-                        origin.x: 220
-                        origin.y: 450
-                        angle: (1.0 - root.tag3Progress) * 55 + root.clickSpread3 * 25
-                    },
-                    Scale {
-                        origin.x: 220
-                        origin.y: 450
-                        xScale: 0.65 + 0.35 * root.tag3Progress
-                        yScale: 0.65 + 0.35 * root.tag3Progress
-                    }
-                ]
-
-                ShapePath {
-                    fillColor: Colours.palette.m3onSurface
-                    strokeColor: Colours.palette.m3surfaceContainerHighest
-                    strokeWidth: 20
-
-                    PathSvg {
-                        path: "M703.031 434.157C726.125 436.326 742.539 457.619 738.757 480.503L719.627 596.257C717.976 606.245 712.6 615.235 704.582 621.416L492.174 785.143C474.678 798.629 449.561 795.379 436.074 777.882L338.394 651.159C324.907 633.662 328.158 608.545 345.655 595.058L558.062 431.331C566.08 425.151 576.143 422.241 586.222 423.187L703.031 434.157ZM685.032 484.973C679.975 478.412 670.556 477.193 663.995 482.25C657.433 487.308 656.214 496.726 661.272 503.288C666.329 509.849 675.748 511.068 682.309 506.011C688.871 500.953 690.09 491.534 685.032 484.973Z"
-                    }
-                }
-            }
-
-            Shape {
-                id: crescentMoon
-                width: 894
-                height: 894
-                z: 5
-                preferredRendererType: Shape.CurveRenderer
-
-                ShapePath {
-                    fillColor: Colours.palette.m3onSurface
-                    strokeColor: Colours.palette.m3surfaceContainerHighest
-                    strokeWidth: 30
-
-                    PathSvg {
-                        path: "M346.323 46.8027C360.765 43.344 372.683 51.2605 377.825 61.7441C382.879 72.0467 382.117 85.9219 372.343 96.001C267.425 204.193 231.614 368.733 294.448 515.94L295.188 517.663C358.406 663.835 501.512 751.213 651.699 750.438L652.354 750.442C666.059 750.649 676.338 759.579 680.22 770.187C684.298 781.329 681.62 795.689 668.597 803.646C651.461 814.114 633.36 823.467 614.352 831.568C403.013 921.64 158.606 823.468 68.459 612.272C-21.6907 401.071 76.5761 156.844 287.921 66.7705L289.703 66.0156C308.133 58.2597 326.819 51.9291 345.634 46.9766L346.323 46.8027Z"
-                    }
+                PathSvg {
+                    path: "M600 125C807.107 125 975 292.893 975 500C975 348.122 851.878 225 700 225C548.122 225 425 348.122 425 500C425 651.878 548.122 775 700 775C851.285 775 974.038 652.838 974.994 501.778L974.992 502.425C973.688 708.416 806.298 875 600 875C392.893 875 225 707.107 225 500C225 292.893 392.893 125 600 125Z"
                 }
             }
         }
 
-        Item {
-            id: starsContainer
-            width: 894
-            height: 894
-            z: 6
+        Shape {
+            id: glyphA
+            width: 1000
+            height: 1000
+            z: 3
+            preferredRendererType: Shape.CurveRenderer
 
-            opacity: root.starOpacity
-            scale: root.starScale
-            transformOrigin: Item.Center
+            opacity: Math.min(1.0, root.glyphProgress * 1.8)
 
-            Shape {
-                id: star1
-                width: 894
-                height: 894
-                preferredRendererType: Shape.CurveRenderer
-
-                ShapePath {
-                    fillColor: Colours.palette.m3primary
-                    strokeColor: "transparent"
-                    PathSvg {
-                        path: "M520.865 47.5453C518.301 65.7533 505.755 121.096 447.559 127.882C446.814 127.968 446.814 129.032 447.559 129.118C505.755 135.904 518.317 191.255 520.881 209.455C520.982 210.182 522.033 210.182 522.135 209.455C524.699 191.247 537.245 135.904 595.441 129.118C596.186 129.032 596.186 127.968 595.441 127.882C537.245 121.096 524.683 65.7454 522.119 47.5453C522.018 46.8182 520.967 46.8182 520.865 47.5453Z"
-                    }
+            transform: [
+                Translate {
+                    y: (1.0 - root.glyphProgress) * 90
+                },
+                Scale {
+                    origin.x: 700
+                    origin.y: 500
+                    xScale: 0.55 + 0.45 * root.glyphProgress
+                    yScale: 0.55 + 0.45 * root.glyphProgress
                 }
-            }
+            ]
 
-            Shape {
-                id: star2
-                width: 894
-                height: 894
-                preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                fillColor: Colours.palette.m3tertiary
+                strokeColor: "transparent"
 
-                ShapePath {
-                    fillColor: Colours.palette.m3primary
-                    strokeColor: "transparent"
-                    PathSvg {
-                        path: "M666.69 154.668C664.25 169.077 654.6 203.318 617.69 209.088C616.77 209.228 616.77 210.518 617.69 210.658C654.6 216.428 664.26 250.678 666.7 265.078C666.85 265.968 668.14 265.968 668.29 265.078C670.73 250.668 680.38 216.428 717.29 210.658C718.21 210.518 718.21 209.228 717.29 209.088C680.38 203.318 670.72 169.067 668.28 154.668C668.13 153.778 666.84 153.778 666.69 154.668Z"
-                    }
-                }
-            }
-
-            Shape {
-                id: star3
-                width: 894
-                height: 894
-                preferredRendererType: Shape.CurveRenderer
-
-                ShapePath {
-                    fillColor: Colours.palette.m3primary
-                    strokeColor: "transparent"
-                    PathSvg {
-                        path: "M578.467 252.66C576.357 263.94 568.837 287.89 542.668 292.61C541.778 292.77 541.778 294.01 542.668 294.17C568.837 298.89 576.367 322.83 578.477 334.12C578.637 335 579.898 335 580.068 334.12C582.178 322.84 589.698 298.89 615.868 294.17C616.758 294.01 616.758 292.77 615.868 292.61C589.698 287.89 582.168 263.95 580.058 252.66C579.898 251.78 578.637 251.78 578.467 252.66Z"
-                    }
-                }
-            }
-
-            ParallelAnimation {
-                running: true
-                loops: Animation.Infinite
-
-                SequentialAnimation {
-                    loops: Animation.Infinite
-                    NumberAnimation { target: star1; property: "y"; from: 0; to: -15; duration: 2500; easing.type: Easing.InOutQuad }
-                    NumberAnimation { target: star1; property: "y"; from: -15; to: 0; duration: 2500; easing.type: Easing.InOutQuad }
-                }
-
-                SequentialAnimation {
-                    loops: Animation.Infinite
-                    NumberAnimation { target: star2; property: "y"; from: 0; to: 18; duration: 3000; easing.type: Easing.InOutQuad }
-                    NumberAnimation { target: star2; property: "y"; from: 18; to: 0; duration: 3000; easing.type: Easing.InOutQuad }
-                }
-
-                SequentialAnimation {
-                    loops: Animation.Infinite
-                    NumberAnimation { target: star3; property: "y"; from: 0; to: -12; duration: 2800; easing.type: Easing.InOutQuad }
-                    NumberAnimation { target: star3; property: "y"; from: -12; to: 0; duration: 2800; easing.type: Easing.InOutQuad }
-                }
-
-                SequentialAnimation {
-                    loops: Animation.Infinite
-                    NumberAnimation { target: star1; property: "scale"; from: 1.0; to: 1.12; duration: 2500; easing.type: Easing.InOutQuad }
-                    NumberAnimation { target: star1; property: "scale"; from: 1.12; to: 1.0; duration: 2500; easing.type: Easing.InOutQuad }
-                }
-
-                SequentialAnimation {
-                    loops: Animation.Infinite
-                    NumberAnimation { target: star2; property: "scale"; from: 1.0; to: 1.15; duration: 3000; easing.type: Easing.InOutQuad }
-                    NumberAnimation { target: star2; property: "scale"; from: 1.15; to: 1.0; duration: 3000; easing.type: Easing.InOutQuad }
-                }
-
-                SequentialAnimation {
-                    loops: Animation.Infinite
-                    NumberAnimation { target: star3; property: "scale"; from: 1.0; to: 1.10; duration: 2800; easing.type: Easing.InOutQuad }
-                    NumberAnimation { target: star3; property: "scale"; from: 1.10; to: 1.0; duration: 2800; easing.type: Easing.InOutQuad }
+                PathSvg {
+                    path: "M566.667 397.25V363H833.333V397.25H566.667ZM566.667 637V534.25H550V500L566.667 414.375H833.333L850 500V534.25H833.333V637H800V534.25H733.333V637H566.667ZM600 602.75H700V534.25H600V602.75ZM584.167 500H815.833L805.833 448.625H594.167L584.167 500Z"
                 }
             }
         }
