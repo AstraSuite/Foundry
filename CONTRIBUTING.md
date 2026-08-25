@@ -5,7 +5,7 @@
 ```bash
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-./build/astra --gui
+./build/foundry --gui
 ```
 
 Required at build time: CMake >= 3.19, a C++20 compiler and Qt 6.5 or newer with the Core, Gui,

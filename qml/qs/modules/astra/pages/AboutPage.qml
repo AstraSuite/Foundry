@@ -78,7 +78,7 @@ PageBase {
         InfoRow {
             last: true
             label: qsTr("Executable")
-            value: "astra (--gui / -g)"
+            value: "foundry (--gui / -g)"
             icon: "terminal"
         }
 

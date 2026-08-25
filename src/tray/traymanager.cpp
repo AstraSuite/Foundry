@@ -417,12 +417,12 @@ void TrayManager::showNotification(const QString& title, const QString& message)
 
 bool TrayManager::checkAutostartFileExists() const {
     const QString autostartDir = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + QStringLiteral("/autostart");
-    return QFile::exists(autostartDir + QStringLiteral("/astra-tray.desktop"));
+    return QFile::exists(autostartDir + QStringLiteral("/foundry-tray.desktop"));
 }
 
 void TrayManager::updateAutostartFile(bool enable) {
     const QString autostartDir = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + QStringLiteral("/autostart");
-    const QString desktopFile = autostartDir + QStringLiteral("/astra-tray.desktop");
+    const QString desktopFile = autostartDir + QStringLiteral("/foundry-tray.desktop");
 
     if (enable) {
         QDir().mkpath(autostartDir);
@@ -433,7 +433,7 @@ void TrayManager::updateAutostartFile(bool enable) {
                 "Type=Application\n"
                 "Name=Foundry Tray\n"
                 "Comment=Unified package manager background notifier\n"
-                "Exec=astra --tray\n"
+                "Exec=foundry --tray\n"
                 "Icon=astra-foundry\n"
                 "Terminal=false\n"
                 "Categories=System;PackageManager;\n"

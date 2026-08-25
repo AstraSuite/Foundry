@@ -67,9 +67,9 @@ jobs:
           mkdir -p "dist/${DIST_DIR}/share/icons/hicolor/scalable/apps"
           mkdir -p "dist/${DIST_DIR}/share/polkit-1/actions"
 
-          cp build/astra "dist/${DIST_DIR}/bin/"
+          cp build/foundry "dist/${DIST_DIR}/bin/"
           cp build/astra "dist/astra-foundry-linux-x86_64"
-          cp assets/astra.desktop "dist/${DIST_DIR}/share/applications/"
+          cp assets/foundry.desktop "dist/${DIST_DIR}/share/applications/"
           cp assets/icons/astra-foundry.svg "dist/${DIST_DIR}/share/icons/hicolor/scalable/apps/"
           cp assets/icons/tray-dark.svg "dist/${DIST_DIR}/share/icons/hicolor/scalable/apps/"
           cp assets/icons/tray-light.svg "dist/${DIST_DIR}/share/icons/hicolor/scalable/apps/"
@@ -94,8 +94,8 @@ jobs:
           $SUDO mkdir -p "${PREFIX}/share/icons/hicolor/scalable/apps"
           $SUDO mkdir -p "/usr/share/polkit-1/actions"
 
-          $SUDO install -Dm755 bin/astra "${PREFIX}/bin/astra"
-          $SUDO install -Dm644 share/applications/astra.desktop "${PREFIX}/share/applications/astra.desktop"
+          $SUDO install -Dm755 bin/foundry "${PREFIX}/bin/foundry"
+          $SUDO install -Dm644 share/applications/foundry.desktop "${PREFIX}/share/applications/foundry.desktop"
           $SUDO install -Dm644 share/icons/hicolor/scalable/apps/astra-foundry.svg "${PREFIX}/share/icons/hicolor/scalable/apps/astra-foundry.svg"
           $SUDO install -Dm644 share/icons/hicolor/scalable/apps/tray-dark.svg "${PREFIX}/share/icons/hicolor/scalable/apps/tray-dark.svg"
           $SUDO install -Dm644 share/icons/hicolor/scalable/apps/tray-light.svg "${PREFIX}/share/icons/hicolor/scalable/apps/tray-light.svg"

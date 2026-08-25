@@ -37,9 +37,9 @@ file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
     "src/*.hpp"
 )
 
-qt_add_executable(astra ${PROJECT_SOURCES})
+qt_add_executable(foundry ${PROJECT_SOURCES})
 
-qt_add_shaders(astra "blob_shaders"
+qt_add_shaders(foundry "blob_shaders"
     BATCHABLE
     OPTIMIZED
     PREFIX "/"
@@ -51,7 +51,7 @@ qt_add_shaders(astra "blob_shaders"
         shaders/blob.frag
 )
 
-target_include_directories(astra PRIVATE
+target_include_directories(foundry PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/config
     ${CMAKE_CURRENT_SOURCE_DIR}/src/utils
@@ -62,7 +62,7 @@ target_include_directories(astra PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/blobs
 )
 
-target_link_libraries(astra PRIVATE
+target_link_libraries(foundry PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
@@ -76,7 +76,7 @@ target_link_libraries(astra PRIVATE
 )
 
 # Embed qml and assets resources
-qt_add_resources(astra "resources"
+qt_add_resources(foundry "resources"
     PREFIX "/"
     FILES
         assets/icons/astra-foundry.svg
@@ -87,7 +87,7 @@ qt_add_resources(astra "resources"
 
 # Add QML files with CONFIGURE_DEPENDS
 file(GLOB_RECURSE QML_FILES CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "qml/*.qml" "qml/**/qmldir")
-qt_add_resources(astra "qml_resources"
+qt_add_resources(foundry "qml_resources"
     PREFIX "/"
     FILES ${QML_FILES}
 )
@@ -95,7 +95,7 @@ qt_add_resources(astra "qml_resources"
 find_package(Qt6 QUIET COMPONENTS LinguistTools)
 
 if(Qt6LinguistTools_FOUND)
-    qt_add_translations(astra
+    qt_add_translations(foundry
         TS_FILES translations/foundry_de.ts
         RESOURCE_PREFIX "/i18n"
     )
@@ -138,11 +138,11 @@ endif()
 # Installation
 include(GNUInstallDirs)
 
-install(TARGETS astra
+install(TARGETS foundry
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-install(FILES assets/astra.desktop
+install(FILES assets/foundry.desktop
     DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
 )
 
@@ -159,16 +159,16 @@ install(FILES assets/polkit/com.astra-foundry.pacman.policy
     DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions
 )
 
-install(FILES assets/completions/astra.bash
+install(FILES assets/completions/foundry.bash
     DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions
-    RENAME astra
+    RENAME foundry
 )
 
 install(FILES assets/completions/_astra
     DESTINATION ${CMAKE_INSTALL_DATADIR}/zsh/site-functions
 )
 
-install(FILES assets/completions/astra.fish
+install(FILES assets/completions/foundry.fish
     DESTINATION ${CMAKE_INSTALL_DATADIR}/fish/vendor_completions.d
 )
 

@@ -24,8 +24,8 @@ sha256sums=('270296c6995f77fda20797efea47069791509a6cf95be368da5931cb1e1c7d84')
 package() {
     cd "astra-foundry-v$pkgver-linux-x86_64"
 
-    install -Dm755 bin/astra "$pkgdir/usr/bin/astra"
-    install -Dm644 share/applications/astra.desktop "$pkgdir/usr/share/applications/astra.desktop"
+    install -Dm755 bin/foundry "$pkgdir/usr/bin/foundry"
+    install -Dm644 share/applications/foundry.desktop "$pkgdir/usr/share/applications/foundry.desktop"
     install -Dm644 share/polkit-1/actions/com.astra-foundry.pacman.policy \
         "$pkgdir/usr/share/polkit-1/actions/com.astra-foundry.pacman.policy"
 

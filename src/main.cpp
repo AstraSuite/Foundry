@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
     }
 
     const QString userName = qgetenv("USER").isEmpty() ? QStringLiteral("default") : QString::fromLocal8Bit(qgetenv("USER"));
-    const QString serverName = QStringLiteral("astra-market-single-instance-") + userName;
+    const QString serverName = QStringLiteral("foundry-single-instance-") + userName;
 
     if (launchGui) {
         QLocalSocket socket;
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
 
     if (!launchGui) {
         QCoreApplication app(argc, argv);
-        app.setApplicationName(QStringLiteral("astra"));
+        app.setApplicationName(QStringLiteral("foundry"));
         app.setOrganizationName(QStringLiteral("astra-foundry"));
         app.setApplicationVersion(QStringLiteral(ASTRA_VERSION));
 
@@ -134,9 +134,9 @@ int main(int argc, char* argv[]) {
     QSurfaceFormat::setDefaultFormat(format);
 
     QApplication app(argc, argv);
-    app.setApplicationName(QStringLiteral("astra"));
+    app.setApplicationName(QStringLiteral("foundry"));
     app.setOrganizationName(QStringLiteral("astra-foundry"));
-    app.setDesktopFileName(QStringLiteral("astra"));
+    app.setDesktopFileName(QStringLiteral("foundry"));
     app.setApplicationVersion(QStringLiteral(ASTRA_VERSION));
     app.setQuitOnLastWindowClosed(false);
     installTranslations(app);

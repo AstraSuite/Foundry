@@ -122,5 +122,5 @@ The details command should output a JSON object:
 
 4. Verify your plugin is loaded:
    ```bash
-   astra sources
+   foundry sources
    ```

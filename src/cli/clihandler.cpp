@@ -73,14 +73,14 @@ bool looksLikeAppImage(const QString& value) {
 }
 
 void CliHandler::printVersion() {
-    std::cout << bold() << cyan() << "astra" << reset() << " version " << green() << ASTRA_VERSION << reset()
+    std::cout << bold() << cyan() << "foundry" << reset() << " version " << green() << ASTRA_VERSION << reset()
               << " (Foundry Universal Package Manager)\n";
 }
 
 void CliHandler::printHelp() {
     std::cout << bold() << cyan() << "Foundry CLI" << reset() << " - Unified Linux package management\n\n"
               << bold() << "USAGE:" << reset() << "\n"
-              << "  astra <COMMAND> [OPTIONS]\n\n"
+              << "  foundry <COMMAND> [OPTIONS]\n\n"
               << bold() << "COMMANDS:" << reset() << "\n"
               << "  " << green() << "search" << reset() << " <query>          Search for packages across all or specific sources\n"
               << "  " << green() << "install" << reset() << " <pkg>           Install a package or a local .AppImage file\n"
@@ -100,12 +100,12 @@ void CliHandler::printHelp() {
               << "  " << yellow() << "-h, --help" << reset() << "              Show this help message\n"
               << "  " << yellow() << "-v, --version" << reset() << "           Show version information\n\n"
               << bold() << "EXAMPLES:" << reset() << "\n"
-              << "  astra search discord\n"
-              << "  astra search vlc --source Flatpak --json\n"
-              << "  astra install org.videolan.VLC --scope system\n"
-              << "  astra install yay-bin --source AUR\n"
-              << "  astra upgrade\n"
-              << "  astra info com.spotify.Client\n\n"
+              << "  foundry search discord\n"
+              << "  foundry search vlc --source Flatpak --json\n"
+              << "  foundry install org.videolan.VLC --scope system\n"
+              << "  foundry install yay-bin --source AUR\n"
+              << "  foundry upgrade\n"
+              << "  foundry info com.spotify.Client\n\n"
               << bold() << "EXIT STATUS:" << reset() << "\n"
               << "  0  success\n"
               << "  1  the requested operation failed or the arguments were invalid\n";
@@ -246,7 +246,7 @@ int CliHandler::run(int argc, char* argv[], PackageManager& pm) {
     }
 
     std::cerr << red() << "Unknown command: " << text(command) << reset() << "\n";
-    std::cout << "Run " << bold() << "astra --help" << reset() << " for available commands.\n";
+    std::cout << "Run " << bold() << "foundry --help" << reset() << " for available commands.\n";
     return 1;
 }
 
@@ -281,7 +281,7 @@ int CliHandler::handleSearch(const Options& options, PackageManager& pm) {
     const QString query = options.positional.value(0);
     if (query.isEmpty()) {
         std::cerr << red() << "Error: search query required." << reset() << "\n";
-        std::cout << "Usage: astra search <query> [--source <source>] [--json]\n";
+        std::cout << "Usage: foundry search <query> [--source <source>] [--json]\n";
         return 1;
     }
 
@@ -320,7 +320,7 @@ int CliHandler::handleInstall(const Options& options, PackageManager& pm) {
     const QString packageId = options.positional.value(0);
     if (packageId.isEmpty()) {
         std::cerr << red() << "Error: package id required." << reset() << "\n";
-        std::cout << "Usage: astra install <package-id> [--source <source>] [--scope user|system]\n";
+        std::cout << "Usage: foundry install <package-id> [--source <source>] [--scope user|system]\n";
         return 1;
     }
 
@@ -354,7 +354,7 @@ int CliHandler::handleUninstall(const Options& options, PackageManager& pm) {
     const QString packageId = options.positional.value(0);
     if (packageId.isEmpty()) {
         std::cerr << red() << "Error: package id required." << reset() << "\n";
-        std::cout << "Usage: astra remove <package-id> [--source <source>] [--scope user|system]\n";
+        std::cout << "Usage: foundry remove <package-id> [--source <source>] [--scope user|system]\n";
         return 1;
     }
 
@@ -439,7 +439,7 @@ int CliHandler::handleUpdate(const Options& options, PackageManager& pm) {
                   << text(item.value(QStringLiteral("backend")).toString()) << "] " << yellow()
                   << text(item.value(QStringLiteral("version")).toString()) << reset() << "\n";
     }
-    std::cout << "\nApply them with " << bold() << "astra upgrade" << reset() << ".\n";
+    std::cout << "\nApply them with " << bold() << "foundry upgrade" << reset() << ".\n";
     return 0;
 }
 
@@ -486,7 +486,7 @@ int CliHandler::handleInfo(const Options& options, PackageManager& pm) {
     const QString packageId = options.positional.value(0);
     if (packageId.isEmpty()) {
         std::cerr << red() << "Error: package id required." << reset() << "\n";
-        std::cout << "Usage: astra info <package-id> [--source <source>] [--json]\n";
+        std::cout << "Usage: foundry info <package-id> [--source <source>] [--json]\n";
         return 1;
     }
 

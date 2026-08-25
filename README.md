@@ -62,13 +62,13 @@ This installs the `astra` binary to `/usr/bin`, the desktop launcher to `/usr/sh
 Launch the graphical marketplace interface:
 
 ```bash
-./build/astra --gui
+./build/foundry --gui
 ```
 
 or:
 
 ```bash
-./build/astra -g
+./build/foundry -g
 ```
 
 ## Using the CLI
@@ -76,67 +76,67 @@ or:
 Search across enabled package sources:
 
 ```bash
-astra search <query>
-astra search <query> --source <Flatpak|Pacman|AUR|AppImage>
-astra search <query> --json
+foundry search <query>
+foundry search <query> --source <Flatpak|Pacman|AUR|AppImage>
+foundry search <query> --json
 ```
 
 When no `--source` is given, the source is resolved from the package id: an ambiguous id lists the
-sources that provide it, so `astra install yay --source AUR` picks the AUR package rather than the
+sources that provide it, so `foundry install yay --source AUR` picks the AUR package rather than the
 repository one.
 
 Install a package:
 
 ```bash
-astra install <package-id>
-astra install <package-id> --source <source>
-astra install <package-id> --source Flatpak --scope <user|system>
+foundry install <package-id>
+foundry install <package-id> --source <source>
+foundry install <package-id> --source Flatpak --scope <user|system>
 ```
 
 Uninstall a package:
 
 ```bash
-astra remove <package-id>
-astra remove <package-id> --source <source>
+foundry remove <package-id>
+foundry remove <package-id> --source <source>
 ```
 
 List installed packages:
 
 ```bash
-astra list
+foundry list
 ```
 
 List available updates:
 
 ```bash
-astra update
-astra update --json
+foundry update
+foundry update --json
 ```
 
 Apply updates, either everything or a single package:
 
 ```bash
-astra upgrade
-astra upgrade <package-id>
+foundry upgrade
+foundry upgrade <package-id>
 ```
 
 View package details:
 
 ```bash
-astra info <package-id>
-astra info <package-id> --source <source>
+foundry info <package-id>
+foundry info <package-id> --source <source>
 ```
 
 List active package sources and plugins:
 
 ```bash
-astra sources
+foundry sources
 ```
 
 Show help and all available commands:
 
 ```bash
-astra --help
+foundry --help
 ```
 
 Output is coloured only when it goes to a terminal; `--no-color` and `NO_COLOR` disable it, and

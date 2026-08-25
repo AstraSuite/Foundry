@@ -1,4 +1,4 @@
-#compdef astra
+#compdef foundry
 
 local state
 local -a commands
@@ -27,5 +27,5 @@ _arguments -C \
     '*:: :_files'
 
 if [[ $state == command ]]; then
-    _describe -t commands 'astra command' commands
+    _describe -t commands 'foundry command' commands
 fi

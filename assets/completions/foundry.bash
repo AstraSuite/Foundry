@@ -31,4 +31,4 @@ _astra() {
     COMPREPLY=($(compgen -f -- "$cur"))
 }
 
-complete -F _astra astra
+complete -F _astra foundry
