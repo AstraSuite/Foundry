@@ -164,7 +164,7 @@ install(FILES assets/completions/foundry.bash
     RENAME foundry
 )
 
-install(FILES assets/completions/_astra
+install(FILES assets/completions/_foundry
     DESTINATION ${CMAKE_INSTALL_DATADIR}/zsh/site-functions
 )
 
