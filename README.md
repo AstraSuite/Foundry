@@ -1,4 +1,8 @@
-# Foundry
+<p align="center">
+  <img src="assets/icons/astra-foundry.svg" width="140" alt="Uplink">
+</p>
+
+<h1 align="center">Foundry</h1>
 
 Foundry is a unified package manager providing both a graphical interface and a command-line interface for managing Flatpak, Pacman, AUR, AppImage, and custom package sources.
 
