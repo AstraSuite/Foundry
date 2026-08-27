@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Templates
 import Foundry.Config
-import Caelestia.Internal
+import Foundry.Controls
 import qs.components
 import qs.services
 

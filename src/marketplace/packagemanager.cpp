@@ -1,5 +1,6 @@
 #include "packagemanager.hpp"
 #include "pluginprocess.hpp"
+#include "utils/iconimageprovider.hpp"
 #include <QFutureWatcher>
 #include <QtConcurrent>
 #include <QDir>
@@ -645,7 +646,10 @@ QString PackageManager::getIconPath(const QString& iconName, const QString& back
         return iconName;
     }
     if (iconName.startsWith(QLatin1Char('/'))) {
-        return QStringLiteral("file://") + iconName;
+        return QFile::exists(iconName) ? QStringLiteral("file://") + iconName : QString();
+    }
+    if (!IconImageProvider::hasIcon(iconName)) {
+        return QString();
     }
     return QStringLiteral("image://icon/") + iconName;
 }

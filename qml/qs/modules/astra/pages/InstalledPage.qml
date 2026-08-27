@@ -19,10 +19,22 @@ PageBase {
     property var selectedApp: null
     property int visibleCount: 20
     property bool isLoading: false
+    property string searchQuery: ""
+
+    readonly property var filteredInstalledList: {
+        if (root.searchQuery.trim().length === 0) return root.installedList;
+        const query = root.searchQuery.trim().toLowerCase();
+        return root.installedList.filter(app => {
+            const name = (app.name || app.id || "").toLowerCase();
+            const id = (app.id || "").toLowerCase();
+            return name.includes(query) || id.includes(query);
+        });
+    }
 
     function refreshList(): void {
         root.visibleCount = 20;
         root.isLoading = true;
+        root.searchQuery = "";
         PackageManager.getInstalledPackagesAsync();
     }
 
@@ -35,8 +47,8 @@ PageBase {
             target: root.flickable
             function onContentYChanged(): void {
                 if (root.flickable && root.flickable.contentY + root.flickable.height >= root.flickable.contentHeight - 400) {
-                    if (!root.isLoading && root.visibleCount < root.installedList.length) {
-                        root.visibleCount = Math.min(root.visibleCount + 15, root.installedList.length);
+                    if (!root.isLoading && root.visibleCount < root.filteredInstalledList.length) {
+                        root.visibleCount = Math.min(root.visibleCount + 15, root.filteredInstalledList.length);
                     }
                 }
             }
@@ -72,7 +84,7 @@ PageBase {
             spacing: Tokens.spacing.extraSmall
 
             StyledText {
-                text: qsTr("%1 Installed Applications").arg(root.installedList.length)
+                text: qsTr("%1 Installed Applications").arg(root.filteredInstalledList.length)
                 font: Tokens.font.body.medium
                 color: Colours.palette.m3onSurfaceVariant
                 Layout.alignment: Qt.AlignVCenter
@@ -94,6 +106,15 @@ PageBase {
                 type: ButtonBase.Tonal
                 Layout.alignment: Qt.AlignVCenter
                 onClicked: root.nState.openSubPage(2)
+            }
+        }
+
+        SearchBar {
+            width: root.width
+            placeholderText: qsTr("Search installed apps...")
+            onTextChanged: {
+                root.searchQuery = text;
+                root.visibleCount = 20;
             }
         }
 
@@ -123,9 +144,41 @@ PageBase {
             }
         }
 
+        Item {
+            width: parent.width
+            implicitHeight: Math.max(350, root.height - 180)
+            visible: !root.isLoading && root.searchQuery.trim().length > 0 && root.filteredInstalledList.length === 0
+
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: Tokens.padding.extraSmall
+
+                MaterialIcon {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "search_off"
+                    color: Colours.palette.m3outlineVariant
+                    fontStyle: Tokens.font.icon.extraLarge
+                }
+
+                StyledText {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: qsTr("No installed apps found")
+                    color: Colours.palette.m3outlineVariant
+                    font: Tokens.font.title.large
+                }
+
+                StyledText {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: qsTr("Try searching with different keywords.")
+                    color: Colours.palette.m3outlineVariant
+                    font: Tokens.font.body.large
+                }
+            }
+        }
+
         Repeater {
             id: installedRepeater
-            model: root.isLoading ? [] : root.installedList.slice(0, root.visibleCount)
+            model: root.isLoading ? [] : root.filteredInstalledList.slice(0, root.visibleCount)
 
             ConnectedRect {
                 required property var modelData
@@ -250,7 +303,7 @@ PageBase {
 
         ColumnLayout {
             width: parent.width
-            visible: !root.isLoading && root.visibleCount < root.installedList.length
+            visible: !root.isLoading && root.visibleCount < root.filteredInstalledList.length
             spacing: Tokens.padding.small
 
             Item { implicitHeight: Tokens.padding.small }

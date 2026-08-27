@@ -107,9 +107,19 @@ QImage loadImage(const QString& path, const QSize& targetSize) {
 
 }
 
+QStringList IconImageProvider::s_themeDirectories;
+QHash<QString, QString> IconImageProvider::s_resolvedPaths;
+QHash<QString, QString> IconImageProvider::s_desktopIcons;
+bool IconImageProvider::s_desktopEntriesLoaded{false};
+QMutex IconImageProvider::s_mutex;
+
 IconImageProvider::IconImageProvider()
-    : QQuickImageProvider(QQuickImageProvider::Image)
-    , m_themeDirectories(buildThemeDirectories()) {}
+    : QQuickImageProvider(QQuickImageProvider::Image) {
+    QMutexLocker locker(&s_mutex);
+    if (s_themeDirectories.isEmpty()) {
+        s_themeDirectories = buildThemeDirectories();
+    }
+}
 
 QImage IconImageProvider::requestImage(const QString& id, QSize* size, const QSize& requestedSize) {
     QString name = id;
@@ -121,16 +131,27 @@ QImage IconImageProvider::requestImage(const QString& id, QSize* size, const QSi
     const QSize targetSize(requestedSize.width() > 0 ? requestedSize.width() : 128,
                            requestedSize.height() > 0 ? requestedSize.height() : 128);
 
-    const QImage image = loadImage(resolvePath(name), targetSize);
+    const QString path = resolvePath(name);
+    if (path.isEmpty()) return QImage();
+
+    const QImage image = loadImage(path, targetSize);
     if (!image.isNull() && size) *size = image.size();
     return image;
 }
 
+bool IconImageProvider::hasIcon(const QString& name) {
+    if (name.isEmpty()) return false;
+    return !resolvePath(name).isEmpty();
+}
+
 QString IconImageProvider::resolvePath(const QString& name) {
     {
-        QMutexLocker locker(&m_mutex);
-        const auto cached = m_resolvedPaths.constFind(name);
-        if (cached != m_resolvedPaths.constEnd()) return cached.value();
+        QMutexLocker locker(&s_mutex);
+        if (s_themeDirectories.isEmpty()) {
+            s_themeDirectories = buildThemeDirectories();
+        }
+        const auto cached = s_resolvedPaths.constFind(name);
+        if (cached != s_resolvedPaths.constEnd()) return cached.value();
     }
 
     QString path;
@@ -141,12 +162,12 @@ QString IconImageProvider::resolvePath(const QString& name) {
         if (path.isEmpty()) path = searchDesktopEntries(name);
     }
 
-    QMutexLocker locker(&m_mutex);
-    m_resolvedPaths.insert(name, path);
+    QMutexLocker locker(&s_mutex);
+    s_resolvedPaths.insert(name, path);
     return path;
 }
 
-QString IconImageProvider::searchThemeDirectories(const QString& name) const {
+QString IconImageProvider::searchThemeDirectories(const QString& name) {
     QStringList candidates{name};
     const QString lowered = name.toLower();
     if (lowered != name) candidates.append(lowered);
@@ -154,7 +175,7 @@ QString IconImageProvider::searchThemeDirectories(const QString& name) const {
 
     for (const QString& candidate : candidates) {
         if (candidate.isEmpty()) continue;
-        for (const QString& directory : m_themeDirectories) {
+        for (const QString& directory : s_themeDirectories) {
             for (const QString& subDirectory : iconSubDirectories()) {
                 const QString base = subDirectory.isEmpty()
                     ? directory + QStringLiteral("/") + candidate
@@ -171,8 +192,8 @@ QString IconImageProvider::searchThemeDirectories(const QString& name) const {
 }
 
 void IconImageProvider::loadDesktopEntries() {
-    if (m_desktopEntriesLoaded) return;
-    m_desktopEntriesLoaded = true;
+    if (s_desktopEntriesLoaded) return;
+    s_desktopEntriesLoaded = true;
 
     for (const QString& directoryPath : desktopEntryDirectories()) {
         QDir directory(directoryPath);
@@ -196,20 +217,20 @@ void IconImageProvider::loadDesktopEntries() {
 
             QString key = entry;
             key.chop(8);
-            m_desktopIcons.insert(key.toLower(), icon);
+            s_desktopIcons.insert(key.toLower(), icon);
         }
     }
 }
 
 QString IconImageProvider::searchDesktopEntries(const QString& name) {
-    QMutexLocker locker(&m_mutex);
+    QMutexLocker locker(&s_mutex);
     loadDesktopEntries();
 
     const QString lowered = name.toLower();
-    QString icon = m_desktopIcons.value(lowered);
+    QString icon = s_desktopIcons.value(lowered);
 
     if (icon.isEmpty()) {
-        for (auto it = m_desktopIcons.constBegin(); it != m_desktopIcons.constEnd(); ++it) {
+        for (auto it = s_desktopIcons.constBegin(); it != s_desktopIcons.constEnd(); ++it) {
             if (it.key().contains(lowered)) {
                 icon = it.value();
                 break;

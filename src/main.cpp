@@ -30,6 +30,7 @@
 #include "config/config.hpp"
 
 #include "utils/iconimageprovider.hpp"
+#include "controls/circularindicatormanager.hpp"
 
 #include "cli/clihandler.hpp"
 #include "tray/traymanager.hpp"
@@ -213,6 +214,8 @@ int main(int argc, char* argv[]) {
     qmlRegisterType<BlobRect>("Foundry.Blobs", 1, 0, "BlobRect");
     qmlRegisterType<BlobMaterial>("Foundry.Blobs", 1, 0, "BlobMaterial");
     qmlRegisterType<BlobShape>("Foundry.Blobs", 1, 0, "BlobShape");
+
+    qmlRegisterType<caelestia::controls::CircularIndicatorManager>("Foundry.Controls", 1, 0, "CircularIndicatorManager");
 
     QQmlApplicationEngine engine;
     engine.addImageProvider(QStringLiteral("icon"), new IconImageProvider());

@@ -13,4 +13,5 @@ StyledSpinBox 1.0 StyledSpinBox.qml
 StyledSwitch 1.0 StyledSwitch.qml
 TextButton 1.0 TextButton.qml
 TextFieldBase 1.0 TextFieldBase.qml
+WavyLine 1.0 WavyLine.qml
 

@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Shapes
-import Caelestia
 import Foundry.Config
 import qs.services
 
@@ -134,12 +133,16 @@ MouseArea {
                     color: Qt.alpha(base.color, 1)
                 }
                 GradientStop {
-                    position: CUtils.clamp(1 - 0.2 * root.endRadius / root.circleRadius, 0.01, 0.99)
+                    position: (root.circleRadius > 0 && root.endRadius > 0)
+                        ? Math.max(0.01, Math.min(0.99, 1 - 0.2 * root.endRadius / root.circleRadius))
+                        : 0.01
                     color: Qt.alpha(base.color, 1)
                 }
                 GradientStop {
                     position: 1
-                    color: Qt.alpha(base.color, CUtils.clamp((root.circleRadius / root.endRadius - 0.9) / 0.1, 0, 1))
+                    color: Qt.alpha(base.color, (root.circleRadius > 0 && root.endRadius > 0)
+                        ? Math.max(0, Math.min(1, (root.circleRadius / root.endRadius - 0.9) / 0.1))
+                        : 0)
                 }
             }
 

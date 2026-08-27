@@ -11,15 +11,17 @@ public:
 
     QImage requestImage(const QString& id, QSize* size, const QSize& requestedSize) override;
 
-private:
-    QString resolvePath(const QString& name);
-    QString searchThemeDirectories(const QString& name) const;
-    QString searchDesktopEntries(const QString& name);
-    void loadDesktopEntries();
+    static QString resolvePath(const QString& name);
+    static bool hasIcon(const QString& name);
 
-    const QStringList m_themeDirectories;
-    QHash<QString, QString> m_resolvedPaths;
-    QHash<QString, QString> m_desktopIcons;
-    bool m_desktopEntriesLoaded{false};
-    QMutex m_mutex;
+private:
+    static QString searchThemeDirectories(const QString& name);
+    static QString searchDesktopEntries(const QString& name);
+    static void loadDesktopEntries();
+
+    static QStringList s_themeDirectories;
+    static QHash<QString, QString> s_resolvedPaths;
+    static QHash<QString, QString> s_desktopIcons;
+    static bool s_desktopEntriesLoaded;
+    static QMutex s_mutex;
 };
