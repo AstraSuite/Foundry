@@ -1,23 +1,48 @@
 cmake_minimum_required(VERSION 3.19)
 
-execute_process(
-    COMMAND git describe --tags --abbrev=0
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    OUTPUT_VARIABLE GIT_TAG_VERSION
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-)
+# Version selection: pass -DASTRA_FOUNDRY_VERSION=X.Y.Z to pin the version manually,
+# otherwise derive it from the most recent git tag (e.g. v1.2.3).
+set(ASTRA_FOUNDRY_VERSION ""
+    CACHE STRING "Version of astra-foundry (default: latest git tag)")
 
-if(GIT_TAG_VERSION MATCHES "^v?([0-9]+\\.[0-9]+.*)")
-    string(REGEX REPLACE "^v" "" ASTRA_VERSION_RAW "${GIT_TAG_VERSION}")
-    set(ASTRA_VERSION_STR "${ASTRA_VERSION_RAW}")
-else()
-    set(ASTRA_VERSION_STR "1.3.1")
+if(NOT ASTRA_FOUNDRY_VERSION)
+    find_package(Git QUIET)
+    if(GIT_EXECUTABLE)
+        execute_process(
+            COMMAND "${GIT_EXECUTABLE}" describe --tags --match "v[0-9]*" --abbrev=0 HEAD
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            RESULT_VARIABLE git_describe_result
+            OUTPUT_VARIABLE git_describe_version
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(git_describe_result EQUAL 0 AND git_describe_version)
+            string(REGEX REPLACE "^v" "" ASTRA_FOUNDRY_VERSION "${git_describe_version}")
+        endif()
+    endif()
 endif()
 
-project(astra-foundry VERSION ${ASTRA_VERSION_STR} LANGUAGES CXX)
+if(NOT ASTRA_FOUNDRY_VERSION)
+    # Dev version: YYYY.MM.DD.git.HASH
+    find_package(Git REQUIRED)
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" log -1 --format=%cd --date=format:%Y.%m.%d
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_VARIABLE git_date
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" rev-parse --short HEAD
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_VARIABLE git_hash
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    set(ASTRA_FOUNDRY_VERSION "${git_date}.git.${git_hash}")
+endif()
 
-add_compile_definitions(ASTRA_VERSION="${ASTRA_VERSION_STR}")
+project(astra-foundry VERSION ${ASTRA_FOUNDRY_VERSION} LANGUAGES CXX)
+
+add_compile_definitions(ASTRA_VERSION="${ASTRA_FOUNDRY_VERSION}")
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT OR CMAKE_INSTALL_PREFIX STREQUAL "/usr/local")
     set(CMAKE_INSTALL_PREFIX "/usr" CACHE PATH "Default install prefix" FORCE)
