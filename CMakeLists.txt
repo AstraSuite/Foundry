@@ -23,10 +23,10 @@ if(NOT ASTRA_FOUNDRY_VERSION)
 endif()
 
 if(NOT ASTRA_FOUNDRY_VERSION)
-    # Dev version: YYYY.MM.DD.git.HASH
+    # Dev version: 0.YYYYMMDD.HASH
     find_package(Git REQUIRED)
     execute_process(
-        COMMAND "${GIT_EXECUTABLE}" log -1 --format=%cd --date=format:%Y.%m.%d
+        COMMAND "${GIT_EXECUTABLE}" log -1 --format=%cd --date=format:%Y%m%d
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         OUTPUT_VARIABLE git_date
         OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -37,7 +37,7 @@ if(NOT ASTRA_FOUNDRY_VERSION)
         OUTPUT_VARIABLE git_hash
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-    set(ASTRA_FOUNDRY_VERSION "${git_date}.git.${git_hash}")
+    set(ASTRA_FOUNDRY_VERSION "0.${git_date}.${git_hash}")
 endif()
 
 project(astra-foundry VERSION ${ASTRA_FOUNDRY_VERSION} LANGUAGES CXX)
