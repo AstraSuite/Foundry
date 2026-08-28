@@ -6,12 +6,15 @@ import qs.services
 Item {
     id: root
 
-    readonly property real designSize: 1000
+    readonly property real designWidth: 1074
+    readonly property real designHeight: 1053
     property bool skipIntroAnimation: false
 
-    property real outerProgress: 1.0
-    property real ringProgress: 1.0
-    property real glyphProgress: 1.0
+    property real bucketProgress: 1.0
+    property real tiltProgress: 1.0
+    property real pourProgress: 1.0
+    property real clickTilt: 0.0
+    property real clickSurge: 0.0
 
     implicitWidth: 128
     implicitHeight: 128
@@ -21,82 +24,106 @@ Item {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            if (!introAnim.running && !clickSpinAnim.running) {
-                clickSpinAnim.restart();
+            if (!introAnim.running && !clickPourAnim.running) {
+                clickPourAnim.restart();
             }
         }
     }
 
+    // Interactive pour surge animation on click
     SequentialAnimation {
-        id: clickSpinAnim
+        id: clickPourAnim
         running: false
 
         ParallelAnimation {
-            NumberAnimation {
-                target: logo
-                property: "rotation"
-                from: 0
-                to: 360
-                duration: 700
-                easing.type: Easing.InOutCubic
-            }
-
+            // Bucket tips forward into a deeper pour then recoils
             SequentialAnimation {
                 NumberAnimation {
-                    target: logo
-                    property: "scale"
-                    from: root.implicitWidth / root.designSize
-                    to: (root.implicitWidth / root.designSize) * 1.12
-                    duration: 300
-                    easing.type: Easing.OutCubic
+                    target: root
+                    property: "clickTilt"
+                    from: 0
+                    to: 15
+                    duration: 220
+                    easing.type: Easing.OutQuad
                 }
-
                 NumberAnimation {
-                    target: logo
-                    property: "scale"
-                    from: (root.implicitWidth / root.designSize) * 1.12
-                    to: root.implicitWidth / root.designSize
-                    duration: 400
+                    target: root
+                    property: "clickTilt"
+                    from: 15
+                    to: -5
+                    duration: 260
+                    easing.type: Easing.InOutQuad
+                }
+                NumberAnimation {
+                    target: root
+                    property: "clickTilt"
+                    from: -5
+                    to: 0
+                    duration: 320
+                    easing.type: Easing.OutBack
+                    easing.overshoot: 1.4
+                }
+            }
+
+            // Molten stream surges and expands
+            SequentialAnimation {
+                NumberAnimation {
+                    target: root
+                    property: "clickSurge"
+                    from: 0.0
+                    to: 1.0
+                    duration: 220
+                    easing.type: Easing.OutQuad
+                }
+                NumberAnimation {
+                    target: root
+                    property: "clickSurge"
+                    from: 1.0
+                    to: 0.0
+                    duration: 500
                     easing.type: Easing.OutBack
                     easing.overshoot: 1.2
                 }
             }
 
+            // Overall subtle bounce
             SequentialAnimation {
                 NumberAnimation {
-                    target: root
-                    property: "glyphProgress"
-                    from: 1.0
-                    to: 0.55
-                    duration: 250
-                    easing.type: Easing.InOutQuad
+                    target: logo
+                    property: "scale"
+                    from: Math.min(root.width / root.designWidth, root.height / root.designHeight)
+                    to: Math.min(root.width / root.designWidth, root.height / root.designHeight) * 1.08
+                    duration: 220
+                    easing.type: Easing.OutCubic
                 }
-
                 NumberAnimation {
-                    target: root
-                    property: "glyphProgress"
-                    from: 0.55
-                    to: 1.0
-                    duration: 450
+                    target: logo
+                    property: "scale"
+                    from: Math.min(root.width / root.designWidth, root.height / root.designHeight) * 1.08
+                    to: Math.min(root.width / root.designWidth, root.height / root.designHeight)
+                    duration: 480
                     easing.type: Easing.OutBack
-                    easing.overshoot: 1.6
+                    easing.overshoot: 1.3
                 }
             }
         }
 
         ScriptAction {
-            script: logo.rotation = 0
+            script: {
+                root.clickTilt = 0;
+                root.clickSurge = 0;
+            }
         }
     }
 
     Item {
         id: logo
 
-        implicitWidth: root.designSize
-        implicitHeight: root.designSize
+        implicitWidth: root.designWidth
+        implicitHeight: root.designHeight
 
         anchors.centerIn: parent
-        scale: root.implicitWidth / root.designSize
+        scale: Math.min(root.width / root.designWidth, root.height / root.designHeight)
         transformOrigin: Item.Center
 
         rotation: 0.0
@@ -108,60 +135,42 @@ Item {
 
             ScriptAction {
                 script: {
-                    root.outerProgress = 0.0;
-                    root.ringProgress = 0.0;
-                    root.glyphProgress = 0.0;
-                    logo.rotation = -135.0;
+                    root.bucketProgress = 0.0;
+                    root.tiltProgress = 0.0;
+                    root.pourProgress = 0.0;
+                    root.clickTilt = 0.0;
+                    root.clickSurge = 0.0;
                     logo.opacity = 0.0;
                 }
             }
 
             ParallelAnimation {
+                // Fade in
                 NumberAnimation {
                     target: logo
                     property: "opacity"
                     from: 0.0
                     to: 1.0
-                    duration: 600
+                    duration: 500
                     easing.type: Easing.InOutQuad
                 }
 
-                NumberAnimation {
-                    target: logo
-                    property: "rotation"
-                    from: -135
-                    to: 0
-                    duration: 950
-                    easing.type: Easing.OutCubic
-                }
-
-                SequentialAnimation {
-                    PauseAnimation { duration: 120 }
-                    NumberAnimation {
-                        target: logo
-                        property: "scale"
-                        from: (root.implicitWidth / root.designSize) * 0.7
-                        to: root.implicitWidth / root.designSize
-                        duration: 830
-                        easing.type: Easing.OutBack
-                        easing.overshoot: 1.15
-                    }
-                }
-
+                // Bucket scale entrance
                 NumberAnimation {
                     target: root
-                    property: "outerProgress"
+                    property: "bucketProgress"
                     from: 0.0
                     to: 1.0
-                    duration: 950
+                    duration: 700
                     easing.type: Easing.OutCubic
                 }
 
+                // Bucket tilts forward into pouring position
                 SequentialAnimation {
-                    PauseAnimation { duration: 180 }
+                    PauseAnimation { duration: 200 }
                     NumberAnimation {
                         target: root
-                        property: "ringProgress"
+                        property: "tiltProgress"
                         from: 0.0
                         to: 1.0
                         duration: 800
@@ -170,110 +179,156 @@ Item {
                     }
                 }
 
+                // Molten stream pours out as ladle tilts
                 SequentialAnimation {
                     PauseAnimation { duration: 450 }
                     NumberAnimation {
                         target: root
-                        property: "glyphProgress"
+                        property: "pourProgress"
                         from: 0.0
                         to: 1.0
-                        duration: 600
-                        easing.type: Easing.OutBack
-                        easing.overshoot: 1.5
+                        duration: 650
+                        easing.type: Easing.OutCubic
                     }
                 }
             }
         }
 
-        Shape {
-            id: outerSwoosh
-            width: 1000
-            height: 1000
-            z: 1
-            preferredRendererType: Shape.CurveRenderer
+        // 1. Molten Steel Stream pouring out from behind the ladle
+        Item {
+            id: moltenStream
+            width: root.designWidth
+            height: root.designHeight
+            z: 0
 
-            opacity: Math.min(1.0, root.outerProgress * 1.8)
-
-            transform: [
-                Rotation {
-                    origin.x: 500
-                    origin.y: 500
-                    angle: (1.0 - root.outerProgress) * -260
-                }
-            ]
-
-            ShapePath {
-                fillColor: Colours.palette.m3onSurface
-                strokeColor: "transparent"
-
-                PathSvg {
-                    path: "M999.991 497.412C998.599 277.689 820.051 100 600 100C379.086 100 200 279.086 200 500C200 720.914 379.086 900 600 900C820.051 900 998.601 722.31 999.992 502.587L999.99 503.233C998.251 777.888 775.064 1000 500 1000C223.858 1000 0 776.142 0 500C0 223.858 223.858 0 500 0C775.279 0 998.598 222.46 999.991 497.412Z"
-                }
-            }
-        }
-
-        Shape {
-            id: innerRing
-            width: 1000
-            height: 1000
-            z: 2
-            preferredRendererType: Shape.CurveRenderer
-
-            opacity: Math.min(1.0, root.ringProgress * 1.8)
+            opacity: Math.min(1.0, root.pourProgress * 1.6)
 
             transform: [
                 Scale {
-                    origin.x: 600
-                    origin.y: 500
-                    xScale: 0.5 + 0.5 * root.ringProgress
-                    yScale: 0.5 + 0.5 * root.ringProgress
+                    origin.x: 1023.67
+                    origin.y: 401.717
+                    xScale: 0.8 + 0.2 * root.pourProgress + root.clickSurge * 0.15
+                    yScale: root.pourProgress
                 },
-                Rotation {
-                    origin.x: 600
-                    origin.y: 500
-                    angle: (1.0 - root.ringProgress) * 180
-                }
-            ]
-
-            ShapePath {
-                fillColor: Colours.palette.m3primary
-                strokeColor: "transparent"
-
-                PathSvg {
-                    path: "M600 125C807.107 125 975 292.893 975 500C975 348.122 851.878 225 700 225C548.122 225 425 348.122 425 500C425 651.878 548.122 775 700 775C851.285 775 974.038 652.838 974.994 501.778L974.992 502.425C973.688 708.416 806.298 875 600 875C392.893 875 225 707.107 225 500C225 292.893 392.893 125 600 125Z"
-                }
-            }
-        }
-
-        Shape {
-            id: glyphA
-            width: 1000
-            height: 1000
-            z: 3
-            preferredRendererType: Shape.CurveRenderer
-
-            opacity: Math.min(1.0, root.glyphProgress * 1.8)
-
-            transform: [
                 Translate {
-                    y: (1.0 - root.glyphProgress) * 90
-                },
-                Scale {
-                    origin.x: 700
-                    origin.y: 500
-                    xScale: 0.55 + 0.45 * root.glyphProgress
-                    yScale: 0.55 + 0.45 * root.glyphProgress
+                    y: (1.0 - root.pourProgress) * -30
                 }
             ]
 
-            ShapePath {
-                fillColor: Colours.palette.m3tertiary
-                strokeColor: "transparent"
+            Shape {
+                width: root.designWidth
+                height: root.designHeight
+                preferredRendererType: Shape.CurveRenderer
 
-                PathSvg {
-                    path: "M566.667 397.25V363H833.333V397.25H566.667ZM566.667 637V534.25H550V500L566.667 414.375H833.333L850 500V534.25H833.333V637H800V534.25H733.333V637H566.667ZM600 602.75H700V534.25H600V602.75ZM584.167 500H815.833L805.833 448.625H594.167L584.167 500Z"
+                // Horizontal stream leaving crucible lip
+                ShapePath {
+                    fillColor: Colours.palette.m3tertiary
+                    strokeColor: "transparent"
+
+                    PathSvg {
+                        path: "M839.674 351.717H1023.67V451.717H839.674V351.717Z"
+                    }
+                }
+
+                // Curved pour elbow
+                ShapePath {
+                    fillColor: Colours.palette.m3tertiary
+                    strokeColor: "transparent"
+
+                    PathSvg {
+                        path: "M1073.67 401.717C1073.67 429.331 1051.29 451.717 1023.67 451.717C996.06 451.717 973.674 429.331 973.674 401.717C973.674 374.103 996.06 351.717 1023.67 351.717C1051.29 351.717 1073.67 374.103 1073.67 401.717Z"
+                    }
+                }
+
+                // Vertical cascading waterfall of molten steel
+                ShapePath {
+                    fillColor: Colours.palette.m3tertiary
+                    strokeColor: "transparent"
+
+                    PathSvg {
+                        path: "M973.674 401.717H1073.67V1037.72C1073.67 1046 1066.96 1052.72 1058.67 1052.72H988.674C980.39 1052.72 973.674 1046 973.674 1037.72V401.717Z"
+                    }
+                }
+            }
+        }
+
+        // 2. Ladle / Bucket Group (Tilted crucible + inner vessel + emblem, on top of the pour)
+        Item {
+            id: bucketGroup
+            width: root.designWidth
+            height: root.designHeight
+            z: 1
+
+            opacity: Math.min(1.0, root.bucketProgress * 1.8)
+
+            transform: [
+                Rotation {
+                    origin.x: 650
+                    origin.y: 550
+                    angle: (1.0 - root.tiltProgress) * -30 + root.clickTilt
+                },
+                Scale {
+                    origin.x: 486
+                    origin.y: 488
+                    xScale: 0.7 + 0.3 * root.bucketProgress
+                    yScale: 0.7 + 0.3 * root.bucketProgress
+                }
+            ]
+
+            // Outer dark crucible rim
+            Shape {
+                id: outerBadge
+                width: root.designWidth
+                height: root.designHeight
+                z: 1
+                preferredRendererType: Shape.CurveRenderer
+
+                ShapePath {
+                    fillColor: Colours.palette.m3onSurface
+                    strokeColor: "transparent"
+
+                    PathSvg {
+                        path: "M502.637 6.16955C514.581 -2.96412 531.442 -1.84503 542.074 8.78708L964.548 431.261C975.18 441.894 976.299 458.754 967.166 470.698L665.406 865.306C662.759 868.769 659.388 871.613 655.53 873.64L472.341 969.892C460.713 976.001 446.462 973.836 437.174 964.548L8.78757 536.161C-0.50068 526.873 -2.66622 512.622 3.4435 500.994L99.695 317.806C101.722 313.947 104.566 310.577 108.029 307.929L502.637 6.16955Z"
+                    }
+                }
+            }
+
+            // Inner primary crucible body
+            Shape {
+                id: innerBadge
+                width: root.designWidth
+                height: root.designHeight
+                z: 2
+                preferredRendererType: Shape.CurveRenderer
+
+                ShapePath {
+                    fillColor: Colours.palette.m3primary
+                    strokeColor: "transparent"
+
+                    PathSvg {
+                        path: "M502.44 41.4278C513.484 32.973 529.074 34.0089 538.905 43.8508L929.549 434.928C939.38 444.77 940.415 460.378 931.969 471.434L652.946 836.716C650.497 839.921 647.381 842.554 643.813 844.431L474.427 933.529C463.675 939.185 450.498 937.18 441.909 928.582L45.7993 532.032C37.2109 523.434 35.2085 510.243 40.8579 499.479L129.857 329.904C131.732 326.332 134.362 323.212 137.563 320.761L502.44 41.4278Z"
+                    }
+                }
+            }
+
+            // Emblem on the bucket
+            Shape {
+                id: anvilGlyph
+                width: root.designWidth
+                height: root.designHeight
+                z: 3
+                preferredRendererType: Shape.CurveRenderer
+
+                ShapePath {
+                    fillColor: Colours.palette.m3tertiary
+                    strokeColor: "transparent"
+
+                    PathSvg {
+                        path: "M287.674 330.217V278.717H687.674V330.217H287.674ZM287.674 690.717V536.217H262.674V484.717L287.674 355.967H687.674L712.674 484.717V536.217H687.674V690.717H637.674V536.217H537.674V690.717H287.674ZM337.674 639.217H487.674V536.217H337.674V639.217ZM313.924 484.717H661.424L646.424 407.467H328.924L313.924 484.717Z"
+                    }
                 }
             }
         }
     }
 }
+
