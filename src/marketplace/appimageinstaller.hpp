@@ -42,7 +42,8 @@ signals:
 private:
     void setStatus(bool installing, const QString& message);
     QString extractIcon(const QString& tempExtractDir, const QString& appName);
-    QString generateDesktopFile(const QString& appName, const QString& execPath, const QString& iconPath, const QString& displayName);
+    QString generateDesktopFile(const QString& appName, const QString& execPath, const QString& iconPath, const QString& displayName,
+                                const QString& origComment = {}, const QString& origGenericName = {}, const QString& origCategories = {});
 
     bool m_isInstalling{false};
     QString m_statusMessage;
