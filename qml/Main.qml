@@ -60,6 +60,22 @@ Window {
         }
     }
 
+    // Global drop handler - keep behind Astra so AppImagePage's DropArea gets priority
+    DropArea {
+        anchors.fill: parent
+        onEntered: drag => {
+            if (drag.hasUrls) drag.accept(Qt.CopyAction);
+        }
+        onDropped: drop => {
+            if (drop.hasUrls) {
+                drop.acceptProposedAction();
+                for (var i = 0; i < drop.urls.length; i++) {
+                    AppImageInstaller.installAppImage(drop.urls[i].toString());
+                }
+            }
+        }
+    }
+
     Astra {
         id: astraUi
         anchors.fill: parent
@@ -71,22 +87,6 @@ Window {
             } else {
                 window.close();
                 Qt.quit();
-            }
-        }
-    }
-
-    DropArea {
-        anchors.fill: parent
-        keys: ["text/uri-list"]
-
-        onDropped: drop => {
-            if (drop.hasUrls) {
-                for (var i = 0; i < drop.urls.length; i++) {
-                    var url = drop.urls[i].toString();
-                    if (url.toLowerCase().endsWith(".appimage")) {
-                        AppImageInstaller.installAppImage(url);
-                    }
-                }
             }
         }
     }

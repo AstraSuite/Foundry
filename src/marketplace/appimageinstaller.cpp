@@ -61,10 +61,18 @@ QString humanSize(qint64 bytes) {
     return QString::number(bytes / (1024.0 * 1024.0), 'f', 1) + QStringLiteral(" MB");
 }
 
+bool hasElfMagic(const QString& path) {
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) return false;
+    const QByteArray magic = file.read(4);
+    if (magic.size() < 4) return false;
+    // ELF magic: 0x7F 'E' 'L' 'F', all AppImages are ELF executables
+    if (magic[0] == char(0x7F) && magic[1] == 'E' && magic[2] == 'L' && magic[3] == 'F') return true;
+    return false;
+}
 }
 
-AppImageInstaller::AppImageInstaller(QObject* parent)
-    : QObject(parent) {}
+AppImageInstaller::AppImageInstaller(QObject* parent) : QObject(parent) {}
 
 AppImageInstaller* AppImageInstaller::create(QQmlEngine*, QJSEngine*) {
     return new AppImageInstaller();
@@ -90,6 +98,13 @@ bool AppImageInstaller::installAppImage(const QString& fileUrlOrPath) {
         return false;
     }
 
+    if (!hasElfMagic(localPath)) {
+        setStatus(false, QStringLiteral("Not an AppImage (missing ELF magic): ") + fileInfo.fileName());
+        emit appImageInstallationFailed(m_statusMessage);
+        qWarning() << "AppImageInstaller: rejected non-AppImage" << localPath;
+        return false;
+    }
+
     QString appBaseName = fileInfo.completeBaseName();
 
     const QString safeAppName = slugify(appBaseName);
@@ -111,14 +126,15 @@ bool AppImageInstaller::installAppImage(const QString& fileUrlOrPath) {
         return false;
     }
 
-    QFile::setPermissions(destAppImagePath,
-        QFileDevice::ReadUser | QFileDevice::WriteUser | QFileDevice::ExeUser |
-        QFileDevice::ReadGroup | QFileDevice::ExeGroup |
-        QFileDevice::ReadOther | QFileDevice::ExeOther);
+    QFile::setPermissions(destAppImagePath, QFileDevice::ReadUser | QFileDevice::WriteUser | QFileDevice::ExeUser | QFileDevice::ReadGroup |
+                                                QFileDevice::ExeGroup | QFileDevice::ReadOther | QFileDevice::ExeOther);
 
     QTemporaryDir tempDir;
     QString iconPath;
     QString displayName = appBaseName;
+    QString origComment;
+    QString origGenericName;
+    QString origCategories;
 
     if (tempDir.isValid()) {
         QProcess extractProc;
@@ -137,9 +153,15 @@ bool AppImageInstaller::installAppImage(const QString& fileUrlOrPath) {
                         QTextStream stream(&dFile);
                         while (!stream.atEnd()) {
                             QString line = stream.readLine().trimmed();
-                            if (line.startsWith(QLatin1String("Name="))) {
-                                displayName = line.mid(5).trimmed();
-                                break;
+                            if (line.startsWith(QLatin1String("Name=")) && displayName == appBaseName) {
+                                const QString v = line.mid(5).trimmed();
+                                if (!v.isEmpty()) displayName = v;
+                            } else if (line.startsWith(QLatin1String("Comment=")) && origComment.isEmpty()) {
+                                origComment = line.mid(8).trimmed();
+                            } else if (line.startsWith(QLatin1String("GenericName=")) && origGenericName.isEmpty()) {
+                                origGenericName = line.mid(12).trimmed();
+                            } else if (line.startsWith(QLatin1String("Categories=")) && origCategories.isEmpty()) {
+                                origCategories = line.mid(11).trimmed();
                             }
                         }
                     }
@@ -148,17 +170,17 @@ bool AppImageInstaller::installAppImage(const QString& fileUrlOrPath) {
         }
     }
 
-    QString desktopPath = generateDesktopFile(safeAppName, destAppImagePath, iconPath, displayName);
+    QString desktopPath =
+        generateDesktopFile(safeAppName, destAppImagePath, iconPath, displayName, origComment, origGenericName, origCategories);
 
     QProcess::startDetached(QStringLiteral("update-desktop-database"), {applicationsDirectory()});
 
     if (QFile::exists(QStringLiteral("/usr/bin/notify-send")) || QFile::exists(QStringLiteral("/bin/notify-send"))) {
         QString notifIcon = iconPath.isEmpty() ? QStringLiteral("system-software-install") : iconPath;
-        QProcess::startDetached(QStringLiteral("notify-send"), {
-            QStringLiteral("Foundry"),
-            QStringLiteral("Successfully installed ") + displayName + QStringLiteral("\nAvailable in your applications menu."),
-            QStringLiteral("-i"), notifIcon
-        });
+        QProcess::startDetached(QStringLiteral("notify-send"), {QStringLiteral("Foundry"),
+                                                                QStringLiteral("Successfully installed ") + displayName +
+                                                                    QStringLiteral("\nAvailable in your applications menu."),
+                                                                QStringLiteral("-i"), notifIcon});
     }
 
     setStatus(false, QStringLiteral("Successfully installed ") + displayName);
@@ -203,24 +225,31 @@ QString AppImageInstaller::extractIcon(const QString& tempExtractDir, const QStr
     return appName;
 }
 
-QString AppImageInstaller::generateDesktopFile(const QString& appName, const QString& execPath, const QString& iconPath, const QString& displayName) {
+QString AppImageInstaller::generateDesktopFile(const QString& appName, const QString& execPath, const QString& iconPath,
+                                               const QString& displayName, const QString& origComment, const QString& origGenericName,
+                                               const QString& origCategories) {
     const QString appsDir = applicationsDirectory();
     QDir().mkpath(appsDir);
 
     QString desktopPath = appsDir + QStringLiteral("/appimage-") + appName + QStringLiteral(".desktop");
+
+    const QString comment = origComment.isEmpty() ? QStringLiteral("Installed via Foundry") : origComment;
+    const QString categories = origCategories.isEmpty() ? QStringLiteral("Utility;") : origCategories;
 
     QFile file(desktopPath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream out(&file);
         out << "[Desktop Entry]\n"
             << "Type=Application\n"
-            << "Name=" << displayName << "\n"
-            << "Exec=\"" << execPath << "\" %U\n"
+            << "Name=" << displayName << "\n";
+        if (!origGenericName.isEmpty()) out << "GenericName=" << origGenericName << "\n";
+        out << "Exec=\"" << execPath << "\" %U\n"
             << "Icon=" << (iconPath.isEmpty() ? appName : iconPath) << "\n"
             << "Terminal=false\n"
-            << "Categories=Utility;\n"
-            << "Comment=Installed via Foundry\n"
+            << "Categories=" << categories << "\n"
+            << "Comment=" << comment << "\n"
             << "X-AppImage-InstalledBy=astra-foundry\n";
+        if (!origComment.isEmpty() && origComment != comment) out << "X-AppImage-OriginalComment=" << origComment << "\n";
         file.close();
     }
 
@@ -248,10 +277,14 @@ QVariantList AppImageInstaller::installedAppImages() {
         QTextStream stream(&file);
         while (!stream.atEnd()) {
             const QString line = stream.readLine().trimmed();
-            if (line.startsWith(QLatin1String("Name="))) name = line.mid(5).trimmed();
-            else if (line.startsWith(QLatin1String("Exec="))) exec = executableFromExecLine(line.mid(5).trimmed());
-            else if (line.startsWith(QLatin1String("Icon="))) icon = line.mid(5).trimmed();
-            else if (line.startsWith(QLatin1String("Comment="))) comment = line.mid(8).trimmed();
+            if (line.startsWith(QLatin1String("Name=")))
+                name = line.mid(5).trimmed();
+            else if (line.startsWith(QLatin1String("Exec=")))
+                exec = executableFromExecLine(line.mid(5).trimmed());
+            else if (line.startsWith(QLatin1String("Icon=")))
+                icon = line.mid(5).trimmed();
+            else if (line.startsWith(QLatin1String("Comment=")))
+                comment = line.mid(8).trimmed();
         }
 
         const QFileInfo executable(exec);

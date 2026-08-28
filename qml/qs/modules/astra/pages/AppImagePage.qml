@@ -40,15 +40,15 @@ PageBase {
             id: dropArea
             width: parent.width
             implicitHeight: 180
-            keys: ["text/uri-list"]
 
+            onEntered: drag => {
+                if (drag.hasUrls) drag.accept(Qt.CopyAction);
+            }
             onDropped: drop => {
                 if (drop.hasUrls) {
+                    drop.acceptProposedAction();
                     for (var i = 0; i < drop.urls.length; i++) {
-                        var url = drop.urls[i].toString();
-                        if (url.toLowerCase().endsWith(".appimage")) {
-                            AppImageInstaller.installAppImage(url);
-                        }
+                        AppImageInstaller.installAppImage(drop.urls[i].toString());
                     }
                 }
             }
